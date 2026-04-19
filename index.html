@@ -1,771 +1,1241 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FUAT Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+Lao:wght@400;700&display=swap');
-        
-        :root {
-            --primary: #2563eb;
-            --secondary: #64748b;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DataPivot — Excel Analysis Studio</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap');
 
-        body {
-            font-family: 'Inter', 'Noto+Sans+Lao', sans-serif;
-            background-color: #f8fafc;
-        }
+  :root {
+    --bg: #0a0d14;
+    --surface: #111520;
+    --surface2: #161b28;
+    --surface3: #1c2235;
+    --border: #252d42;
+    --border2: #2e3a55;
+    --accent: #4f8ef7;
+    --accent2: #7c5af7;
+    --accent3: #f75a8e;
+    --green: #3ecf8e;
+    --yellow: #f5c842;
+    --text: #e8edf5;
+    --text2: #8a97b0;
+    --text3: #4e5f7a;
+    --glow: rgba(79,142,247,0.15);
+    --radius: 10px;
+  }
 
-        .doughnut-container {
-            position: relative;
-            width: 160px;
-            height: 160px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
-        .doughnut-hole {
-            width: 110px;
-            height: 110px;
-            background-color: white;
-            border-radius: 50%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 10;
-        }
+  body {
+    font-family: 'DM Mono', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
 
-        .transition-all {
-            transition: all 0.3s ease;
-        }
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 40px 40px;
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 0;
+  }
 
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
-        
-        .ai-badge {
-            background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
-            color: white;
-            padding: 2px 8px;
-            border-radius: 99px;
-            font-size: 10px;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-    </style>
+  .app {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    min-height: 100vh;
+  }
+
+  /* Header */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 28px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    height: 60px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+  }
+
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 18px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .logo-icon {
+    width: 28px; height: 28px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+  }
+
+  .header-divider { flex: 1; }
+
+  .badge {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border2);
+    color: var(--text2);
+    letter-spacing: 0.05em;
+  }
+
+  /* Layout */
+  .main {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    grid-template-rows: 1fr;
+    height: calc(100vh - 60px);
+  }
+
+  /* Sidebar */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .sidebar-section {
+    border-bottom: 1px solid var(--border);
+    padding: 16px;
+  }
+
+  .sidebar-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text3);
+    margin-bottom: 12px;
+  }
+
+  /* Import area */
+  .drop-zone {
+    border: 2px dashed var(--border2);
+    border-radius: var(--radius);
+    padding: 20px 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--surface2);
+  }
+
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--accent);
+    background: var(--glow);
+  }
+
+  .drop-zone-icon { font-size: 24px; margin-bottom: 8px; }
+  .drop-zone-text { font-size: 11px; color: var(--text2); line-height: 1.5; }
+  .drop-zone-text strong { color: var(--accent); display: block; margin-bottom: 2px; font-size: 12px; }
+
+  #fileInput { display: none; }
+
+  /* Sheet selector */
+  .sheet-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .sheet-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 10px;
+    color: var(--text2);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.15s;
+  }
+
+  .sheet-btn:hover { border-color: var(--border2); color: var(--text); }
+  .sheet-btn.active { border-color: var(--accent); color: var(--accent); background: var(--glow); }
+
+  /* Field list */
+  .field-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 180px;
+    overflow-y: auto;
+  }
+
+  .field-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 11px;
+    color: var(--text2);
+    cursor: grab;
+    transition: all 0.15s;
+    user-select: none;
+  }
+
+  .field-chip:hover { border-color: var(--border2); color: var(--text); }
+  .field-chip.dragging { opacity: 0.4; }
+
+  .field-type {
+    width: 20px; height: 20px;
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .type-num { background: rgba(79,142,247,0.2); color: var(--accent); }
+  .type-str { background: rgba(62,207,142,0.2); color: var(--green); }
+  .type-date { background: rgba(245,200,66,0.2); color: var(--yellow); }
+
+  /* Drop zones for pivot */
+  .pivot-zones {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .pivot-zone {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px;
+    min-height: 60px;
+    transition: all 0.2s;
+  }
+
+  .pivot-zone.drag-target { border-color: var(--accent); background: var(--glow); }
+
+  .pivot-zone-label {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text3);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .pz-icon { font-size: 11px; }
+
+  .zone-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    min-height: 24px;
+  }
+
+  .zone-chip {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    color: var(--text);
+    background: var(--surface3);
+    border: 1px solid var(--border2);
+  }
+
+  .zone-chip .remove-btn {
+    cursor: pointer;
+    color: var(--text3);
+    font-size: 12px;
+    line-height: 1;
+    transition: color 0.1s;
+  }
+
+  .zone-chip .remove-btn:hover { color: var(--accent3); }
+
+  /* Aggregation select */
+  .agg-select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    outline: none;
+  }
+
+  .agg-select:focus { border-color: var(--accent); }
+
+  /* Main content */
+  .content {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Toolbar */
+  .toolbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .toolbar-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 14px;
+    color: var(--text2);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .toolbar-btn:hover { border-color: var(--border2); color: var(--text); }
+
+  .toolbar-btn.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+  }
+
+  .toolbar-btn.primary:hover { background: #3a7de8; }
+
+  .toolbar-sep { width: 1px; height: 24px; background: var(--border); }
+  .toolbar-spacer { flex: 1; }
+
+  .stat-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 11px;
+    color: var(--text2);
+  }
+
+  .stat-pill .val { color: var(--green); font-weight: 500; }
+
+  /* Pivot output */
+  .pivot-area {
+    flex: 1;
+    overflow: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* Welcome screen */
+  .welcome {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    text-align: center;
+    padding: 40px;
+  }
+
+  .welcome-icon {
+    width: 80px; height: 80px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 36px;
+    animation: float 3s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+
+  .welcome h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+  }
+
+  .welcome p { color: var(--text2); font-size: 13px; max-width: 380px; line-height: 1.7; }
+
+  .welcome-steps {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+  }
+
+  .step {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 18px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--text2);
+    width: 130px;
+  }
+
+  .step-num {
+    width: 24px; height: 24px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: white;
+    margin: 0 auto 8px;
+  }
+
+  /* Pivot table */
+  .pivot-table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: auto;
+    max-height: calc(100vh - 200px);
+  }
+
+  .pivot-table {
+    border-collapse: collapse;
+    font-size: 12px;
+    min-width: 100%;
+  }
+
+  .pivot-table th {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 8px 14px;
+    text-align: left;
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    white-space: nowrap;
+  }
+
+  .pivot-table th.row-header {
+    background: var(--surface3);
+    color: var(--accent);
+    left: 0;
+    z-index: 3;
+  }
+
+  .pivot-table th.col-header {
+    background: var(--surface2);
+  }
+
+  .pivot-table td {
+    border: 1px solid var(--border);
+    padding: 7px 14px;
+    transition: background 0.1s;
+    white-space: nowrap;
+  }
+
+  .pivot-table tr:hover td { background: var(--surface2); }
+
+  .pivot-table td.row-label {
+    background: var(--surface2);
+    color: var(--text);
+    font-weight: 500;
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    border-right: 2px solid var(--border2);
+  }
+
+  .pivot-table td.value-cell {
+    text-align: right;
+    color: var(--text2);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pivot-table td.total-row {
+    background: rgba(79,142,247,0.07);
+    color: var(--accent);
+    font-weight: 600;
+    border-top: 2px solid var(--border2);
+  }
+
+  .pivot-table td.grand-total {
+    background: rgba(79,142,247,0.15);
+    color: var(--accent);
+    font-weight: 700;
+    border-top: 2px solid var(--accent);
+  }
+
+  /* Bar visualization inside cells */
+  .bar-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+
+  .bar-bg {
+    flex: 1;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    max-width: 60px;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+
+  /* Charts section */
+  .chart-area {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+
+  .chart-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: var(--text2);
+  }
+
+  .bar-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    height: 140px;
+    padding-bottom: 24px;
+    position: relative;
+  }
+
+  .bar-chart::after {
+    content: '';
+    position: absolute;
+    bottom: 24px;
+    left: 0; right: 0;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .chart-bar-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    min-width: 30px;
+  }
+
+  .chart-bar {
+    width: 100%;
+    border-radius: 4px 4px 0 0;
+    background: linear-gradient(180deg, var(--accent2), var(--accent));
+    transition: height 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    cursor: pointer;
+  }
+
+  .chart-bar:hover { filter: brightness(1.2); }
+
+  .chart-bar-label {
+    font-size: 9px;
+    color: var(--text3);
+    text-align: center;
+    word-break: break-word;
+    max-width: 50px;
+    position: absolute;
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 50px;
+  }
+
+  .chart-val {
+    font-size: 9px;
+    color: var(--text2);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Raw data table */
+  .raw-table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: auto;
+    max-height: 300px;
+  }
+
+  .raw-table {
+    border-collapse: collapse;
+    font-size: 11px;
+    min-width: 100%;
+  }
+
+  .raw-table th {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    font-family: 'Syne', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    position: sticky;
+    top: 0;
+    white-space: nowrap;
+  }
+
+  .raw-table td {
+    border: 1px solid var(--border);
+    padding: 5px 12px;
+    color: var(--text2);
+    white-space: nowrap;
+  }
+
+  .raw-table tr:hover td { background: var(--surface2); }
+  .raw-table tr:nth-child(even) td { background: rgba(255,255,255,0.01); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+  /* Notification */
+  .notification {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--surface2);
+    border: 1px solid var(--green);
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 12px;
+    color: var(--green);
+    z-index: 999;
+    animation: slideIn 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  @keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px;
+    color: var(--text3);
+    font-size: 12px;
+  }
+
+  .empty-state-icon { font-size: 28px; margin-bottom: 10px; }
+
+  /* Filter bar */
+  .filter-bar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .filter-input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 10px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    outline: none;
+    min-width: 140px;
+  }
+
+  .filter-input:focus { border-color: var(--accent); }
+
+  .view-tabs {
+    display: flex;
+    gap: 2px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 3px;
+  }
+
+  .view-tab {
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    color: var(--text2);
+    transition: all 0.15s;
+    border: none;
+    background: none;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .view-tab.active {
+    background: var(--accent);
+    color: white;
+  }
+</style>
 </head>
-<body class="p-4 md:p-8">
-
-    <div class="max-w-6xl mx-auto">
-        <!-- Header -->
-        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-            <div>
-                <h1 id="ui-title" class="text-3xl font-bold text-slate-800">FUAT Dashboard</h1>
-                <p id="ui-subtitle" class="text-slate-500">Follow-Up After Training Analysis</p>
-            </div>
-            <div class="flex gap-3">
-                <button onclick="toggleLanguage()" class="px-4 py-2 bg-white border border-slate-200 rounded-lg shadow-sm hover:bg-slate-50 transition-all font-semibold text-slate-700 flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-                    <span id="lang-label">Lao</span>
-                </button>
-                <label class="cursor-pointer px-4 py-2 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition-all font-semibold flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    <span id="ui-upload-btn">Upload Excel</span>
-                    <input type="file" id="file-upload" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleFileUpload(event)">
-                </label>
-            </div>
-        </header>
-
-        <!-- Filters Section -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                <label id="ui-filter-province" class="block text-sm font-semibold text-slate-600 mb-2">Province</label>
-                <select id="filter-province" onchange="updateDistricts()" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition-all">
-                    <option value="">All Provinces</option>
-                </select>
-            </div>
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                <label id="ui-filter-district" class="block text-sm font-semibold text-slate-600 mb-2">District</label>
-                <select id="filter-district" onchange="applyFilters()" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition-all">
-                    <option value="">All Districts</option>
-                </select>
-            </div>
-        </div>
-
-        <!-- Main Content Area -->
-        <div id="dashboard-content" class="hidden">
-            <!-- Summary Stats -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                <!-- Stat Item -->
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center">
-                    <h3 id="ui-gender-title" class="text-sm font-bold text-slate-400 uppercase mb-4 w-full text-left">Gender Dist.</h3>
-                    <div id="chart-gender" class="doughnut-container mb-6 scale-90">
-                        <div class="doughnut-hole">
-                            <span id="ui-total-label" class="text-[10px] text-slate-400 uppercase font-bold tracking-widest mb-1">Total</span>
-                            <span id="total-count-gender" class="text-4xl font-black text-slate-800">0</span>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3 w-full text-center">
-                        <div class="bg-blue-50 rounded-xl p-2 border border-blue-100">
-                            <div id="ui-male-label" class="text-blue-500 text-[10px] font-bold uppercase mb-1">Male</div>
-                            <div id="male-pct" class="text-lg font-black text-blue-700">0 (0%)</div>
-                        </div>
-                        <div class="bg-pink-50 rounded-xl p-2 border border-pink-100">
-                            <div id="ui-female-label" class="text-pink-500 text-[10px] font-bold uppercase mb-1">Female</div>
-                            <div id="female-pct" class="text-lg font-black text-pink-700">0 (0%)</div>
-                        </div>
-                    </div>
-                </div>
-                <!-- Applied Knowledge Stat -->
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center">
-                    <h3 id="ui-applied-title" class="text-sm font-bold text-slate-400 uppercase mb-4 w-full text-left">Skill Usage</h3>
-                    <div id="chart-applied" class="doughnut-container mb-6 scale-90">
-                        <div class="doughnut-hole">
-                            <span id="ui-applied-center-label" class="text-[10px] text-slate-400 uppercase font-bold tracking-widest mb-1">Applied</span>
-                            <span id="applied-count-value" class="text-4xl font-black text-slate-800">0</span>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3 w-full text-center">
-                        <div class="bg-emerald-50 rounded-xl p-2 border border-emerald-100">
-                            <div id="ui-yes-label" class="text-emerald-500 text-[10px] font-bold uppercase mb-1">Yes</div>
-                            <div id="applied-pct" class="text-lg font-black text-emerald-700">0 (0%)</div>
-                        </div>
-                        <div class="bg-slate-50 rounded-xl p-2 border border-slate-200">
-                            <div id="ui-no-label" class="text-slate-500 text-[10px] font-bold uppercase mb-1">No</div>
-                            <div id="not-applied-pct" class="text-lg font-black text-slate-700">0 (0%)</div>
-                        </div>
-                    </div>
-                </div>
-                <!-- New Section 1 Intro -->
-                <div class="lg:col-span-2 bg-gradient-to-br from-blue-600 to-indigo-700 p-6 rounded-2xl shadow-lg text-white">
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="bg-white/20 px-2 py-1 rounded text-[10px] font-bold">SECTION 1</span>
-                        <h2 class="text-xl font-bold">Qualitative Analysis</h2>
-                    </div>
-                    <p id="ui-sec1-desc" class="text-blue-100 text-sm leading-relaxed">
-                        This section focuses on the open-ended responses describing practical application of skills in the field.
-                    </p>
-                    <div class="mt-4 flex gap-4">
-                        <div class="bg-white/10 p-3 rounded-lg border border-white/20 flex-1">
-                            <div class="text-[10px] font-bold text-blue-200">TOTAL ENTRIES</div>
-                            <div id="qual-total" class="text-2xl font-bold">0</div>
-                        </div>
-                        <div class="bg-white/10 p-3 rounded-lg border border-white/20 flex-1">
-                            <div class="text-[10px] font-bold text-blue-200">RICH CONTENT</div>
-                            <div id="qual-rich" class="text-2xl font-bold">0</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Section 1 Detail -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-                <!-- AI Narrative Card -->
-                <div class="lg:col-span-2 bg-white p-8 rounded-3xl shadow-sm border border-slate-100 relative overflow-hidden">
-                    <div class="absolute top-0 right-0 p-4">
-                        <span class="ai-badge">AI INSIGHT BY GEMINI</span>
-                    </div>
-                    <div class="flex items-center gap-3 mb-6">
-                        <div class="w-12 h-12 bg-purple-100 rounded-2xl flex items-center justify-center text-purple-600">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                        </div>
-                        <div>
-                            <h2 id="ui-sec1-title" class="text-xl font-bold text-slate-800">Apply Knowledge Summary</h2>
-                            <p class="text-slate-400 text-xs font-medium uppercase tracking-widest">Natural Language Processing</p>
-                        </div>
-                    </div>
-                    
-                    <div id="ai-summary" class="text-slate-600 leading-relaxed space-y-4 text-lg">
-                        <!-- Dynamic AI Content -->
-                    </div>
-                </div>
-
-                <!-- Quotes / Section 1 List -->
-                <div class="bg-slate-50 p-6 rounded-3xl border border-slate-100">
-                    <h3 id="ui-quotes-title" class="text-sm font-bold text-slate-800 mb-6 flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/></svg>
-                        Representative Feedback
-                    </h3>
-                    <div id="quotes-container" class="space-y-4 h-[400px] overflow-y-auto pr-2">
-                        <!-- Dynamic Quotes -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- Section 2 Detail -->
-            <div class="mb-8">
-                <div class="flex items-center gap-3 mb-6">
-                    <span class="bg-rose-600 text-white px-3 py-1 rounded-full text-xs font-black">SECTION 2</span>
-                    <h2 id="ui-sec2-header" class="text-2xl font-bold text-slate-800 tracking-tight">Barriers to Implementation</h2>
-                </div>
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <!-- AI Narrative Card -->
-                    <div class="lg:col-span-2 bg-white p-8 rounded-3xl shadow-sm border border-slate-100 relative overflow-hidden">
-                        <div class="absolute top-0 right-0 p-4">
-                            <span class="ai-badge">AI INSIGHT BY GEMINI</span>
-                        </div>
-                        <div class="flex items-center gap-3 mb-6">
-                            <div class="w-12 h-12 bg-rose-100 rounded-2xl flex items-center justify-center text-rose-600">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
-                            </div>
-                            <div>
-                                <h2 id="ui-sec2-title" class="text-xl font-bold text-slate-800">Barrier Analysis</h2>
-                                <p class="text-slate-400 text-xs font-medium uppercase tracking-widest">Natural Language Processing</p>
-                            </div>
-                        </div>
-                        <div id="ai-summary-2" class="text-slate-600 leading-relaxed space-y-4 text-lg">
-                            <!-- Dynamic AI Content -->
-                        </div>
-                    </div>
-
-                    <!-- Quotes / Section 2 List -->
-                    <div class="bg-rose-50 p-6 rounded-3xl border border-rose-100">
-                        <h3 id="ui-quotes2-title" class="text-sm font-bold text-slate-800 mb-6 flex items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/></svg>
-                            Reported Obstacles
-                        </h3>
-                        <div id="quotes-container-2" class="space-y-4 h-[400px] overflow-y-auto pr-2">
-                            <!-- Dynamic Quotes -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Section 3 Detail -->
-            <div class="mb-8">
-                <div class="flex items-center gap-3 mb-6">
-                    <span class="bg-teal-600 text-white px-3 py-1 rounded-full text-xs font-black">SECTION 3</span>
-                    <h2 id="ui-sec3-header" class="text-2xl font-bold text-slate-800 tracking-tight">Required Support</h2>
-                </div>
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <!-- AI Narrative Card -->
-                    <div class="lg:col-span-2 bg-white p-8 rounded-3xl shadow-sm border border-slate-100 relative overflow-hidden">
-                        <div class="absolute top-0 right-0 p-4">
-                            <span class="ai-badge">AI INSIGHT BY GEMINI</span>
-                        </div>
-                        <div class="flex items-center gap-3 mb-6">
-                            <div class="w-12 h-12 bg-teal-100 rounded-2xl flex items-center justify-center text-teal-600">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                            </div>
-                            <div>
-                                <h2 id="ui-sec3-title" class="text-xl font-bold text-slate-800">Support Needs Analysis</h2>
-                                <p class="text-slate-400 text-xs font-medium uppercase tracking-widest">Natural Language Processing</p>
-                            </div>
-                        </div>
-                        <div id="ai-summary-3" class="text-slate-600 leading-relaxed space-y-4 text-lg">
-                            <!-- Dynamic AI Content -->
-                        </div>
-                    </div>
-
-                    <!-- Quotes / Section 3 List -->
-                    <div class="bg-teal-50 p-6 rounded-3xl border border-teal-100">
-                        <h3 id="ui-quotes3-title" class="text-sm font-bold text-slate-800 mb-6 flex items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/></svg>
-                            Requested Support
-                        </h3>
-                        <div id="quotes-container-3" class="space-y-4 h-[400px] overflow-y-auto pr-2">
-                            <!-- Dynamic Quotes -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Empty State -->
-        <div id="empty-state" class="flex flex-col items-center justify-center py-24 text-center">
-            <div class="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center text-slate-300 mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
-            </div>
-            <h3 id="ui-empty-title" class="text-xl font-bold text-slate-700">No Data Loaded</h3>
-            <p id="ui-empty-desc" class="text-slate-500 max-w-xs mx-auto">Please upload a valid Excel or CSV file to begin the visualization and analysis.</p>
-        </div>
+<body>
+<div class="app">
+  <header>
+    <div class="logo">
+      <div class="logo-icon">⬡</div>
+      DataPivot
     </div>
+    <span class="badge">Excel Analysis Studio</span>
+    <div class="header-divider"></div>
+    <span class="badge" id="filenameBadge">No file loaded</span>
+  </header>
 
-    <script>
-        // Empty State variables and i18n config
-        let rawData = [];
-        let currentLang = 'en';
-        let uploadedFileName = '';
+  <div class="main">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <!-- Import -->
+      <div class="sidebar-section">
+        <div class="sidebar-title">Import Data</div>
+        <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+          <div class="drop-zone-icon">📊</div>
+          <div class="drop-zone-text">
+            <strong>Click or Drop Excel File</strong>
+            .xlsx, .xls, .csv supported
+          </div>
+        </div>
+        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+      </div>
 
-        const i18n = {
-            en: {
-                title: "FUAT Dashboard",
-                subtitle: "Follow-Up After Training Analysis",
-                upload: "Upload Excel",
-                province: "Province",
-                district: "District",
-                allProv: "All Provinces",
-                allDist: "All Districts",
-                genderDist: "Gender Dist.",
-                appliedTitle: "Skill Usage",
-                male: "Male",
-                female: "Female",
-                yes: "Yes",
-                no: "No",
-                total: "Total",
-                appliedCenter: "Applied",
-                sec1Desc: "This section focuses on the open-ended responses describing practical application of skills in the field.",
-                sec1Title: "Apply Knowledge Summary",
-                quotesTitle: "Representative Feedback",
-                emptyTitle: "No Data Loaded",
-                emptyDesc: "Please upload a valid Excel or CSV file to begin the visualization and analysis.",
-                langBtn: "Lao",
-                aiP1: "Gemini Analysis: Of the ",
-                aiP2: " individuals surveyed, approximately ",
-                aiP3: " provided high-quality descriptive examples of workplace implementation.",
-                aiP4_1: "By analyzing the entirety of the open-ended responses regarding skill application, distinct practical trends emerge. The following ",
-                aiP4_2: " quotes are carefully selected to represent the breadth and depth of this dataset-wide feedback.",
-                aiP5: "Specifically, ",
-                aiP6_1: " respondents explicitly mentioned using their newly acquired skills to address systemic challenges.",
-                aiP6_2: "Data analysis reveals a frequent focus on terms such as:",
-                aiP6_3: "Below are dynamic full sentences extracted directly from the uploaded data that encapsulate these themes:",
-                repSentenceLabel: "Representative Full Sentences",
-                noQuotes: "No feedback found for the current selection.",
-                sec2Header: "Barriers to Implementation",
-                sec2Title: "Barrier Analysis",
-                quotes2Title: "Reported Obstacles",
-                ai2P1: "Gemini Analysis: Regarding implementation challenges, ",
-                ai2P2: " respondents provided specific details on why they could not apply their skills.",
-                ai2P3_1: "The most common barriers are illustrated by ",
-                ai2P3_2: " reported obstacles highlighted below.",
-                sec3Header: "Required Support",
-                sec3Title: "Support Needs Analysis",
-                quotes3Title: "Requested Support",
-                ai3P1: "Gemini Analysis: When asked about future needs, ",
-                ai3P2: " individuals articulated specific requests for assistance.",
-                ai3P3_1: "The primary needs are captured by ",
-                ai3P3_2: " requested support examples highlighted below."
-            },
-            lo: {
-                title: "ແຜງຄວບຄຸມ FUAT",
-                subtitle: "ການວິເຄາະຕິດຕາມພາຍຫຼັງການຝຶກອົບຮົມ",
-                upload: "ອັບໂຫລດ Excel",
-                province: "ແຂວງ",
-                district: "ເມືອງ",
-                allProv: "ທຸກແຂວງ",
-                allDist: "ທຸກເມືອງ",
-                genderDist: "ການແບ່ງເພດ",
-                appliedTitle: "ການນຳໃຊ້ທັກສະ",
-                male: "ຊາຍ",
-                female: "ຍິງ",
-                yes: "ແມ່ນ",
-                no: "ບໍ່",
-                total: "ທັງໝົດ",
-                appliedCenter: "ນຳໃຊ້",
-                sec1Desc: "ພາກສ່ວນນີ້ເນັ້ນໃສ່ຄຳຕອບແບບເປີດທີ່ພັນລະນາເຖິງການນຳໃຊ້ທັກສະຕົວຈິງໃນພາກສະໜາມ.",
-                sec1Title: "ບົດສະຫຼຸບການນຳໃຊ້ຄວາມຮູ້",
-                quotesTitle: "ຄຳເຫັນທີ່ຄັດມາ",
-                emptyTitle: "ຍັງບໍ່ມີຂໍ້ມູນ",
-                emptyDesc: "ກະລຸນາອັບໂຫລດໄຟລ໌ Excel ຫຼື CSV ເພື່ອເລີ່ມການວິເຄາະ.",
-                langBtn: "English",
-                aiP1: "ການວິເຄາະໂດຍ Gemini: ຈາກຈຳນວນ ",
-                aiP2: " ຄົນທີ່ສຳຫຼວດ, ປະມານ ",
-                aiP3: " ຄົນໄດ້ໃຫ້ຕົວຢ່າງການຈັດຕັ້ງປະຕິບັດໃນບ່ອນເຮັດວຽກທີ່ມີຄຸນນະພາບ.",
-                aiP4_1: "ຈາກການວິເຄາະຂໍ້ມູນທັງໝົດຂອງຄຳຕອບແບບເປີດກ່ຽວກັບການນຳໃຊ້ທັກສະ, ພວກເຮົາເຫັນແນວໂນ້ມການປະຕິບັດຕົວຈິງທີ່ຊັດເຈນ. ຈຳນວນ ",
-                aiP4_2: " ຄຳເຫັນຕໍ່ໄປນີ້ຖືກເລືອກມາເພື່ອເປັນຕົວແທນໃຫ້ແກ່ພາບລວມຂອງຂໍ້ມູນທັງໝົດໃນລະບົບ.",
-                aiP5: "ໂດຍສະເພາະ, ",
-                aiP6_1: " ຄົນໄດ້ລະບຸຢ່າງຊັດເຈນເຖິງການນຳໃຊ້ທັກສະໃໝ່ເພື່ອແກ້ໄຂສິ່ງທ້າທາຍໃນລະບົບ.",
-                aiP6_2: "ການວິເຄາະຂໍ້ຄວາມພົບວ່າຈຸດສຸມຫຼັກແມ່ນກ່ຽວກັບຄຳສັບເຊັ່ນ:",
-                aiP6_3: "ຂ້າງລຸ່ມນີ້ແມ່ນບັນດາປະໂຫຍກເຕັມແບບເຄື່ອນໄຫວທີ່ສະກັດມາຈາກຂໍ້ມູນທີ່ອັບໂຫລດເຊິ່ງກວມເອົາຫົວຂໍ້ເຫຼົ່ານີ້:",
-                repSentenceLabel: "ປະໂຫຍກຕົວຢ່າງທີ່ຊັດເຈນ",
-                noQuotes: "ບໍ່ພົບຄຳເຫັນສຳລັບການເລືອກນີ້.",
-                sec2Header: "ອຸປະສັກໃນການຈັດຕັ້ງປະຕິບັດ",
-                sec2Title: "ການວິເຄາະອຸປະສັກ",
-                quotes2Title: "ຂໍ້ຂັດຂ້ອງທີ່ພົບ",
-                ai2P1: "ການວິເຄາະໂດຍ Gemini: ກ່ຽວກັບສິ່ງທ້າທາຍ, ມີ ",
-                ai2P2: " ຜູ້ຕອບທີ່ໄດ້ລະບຸລາຍລະອຽດກ່ຽວກັບເຫດຜົນທີ່ບໍ່ສາມາດນຳໃຊ້ທັກສະ.",
-                ai2P3_1: "ອຸປະສັກທີ່ພົບເລື້ອຍທີ່ສຸດແມ່ນສະແດງໃຫ້ເຫັນໂດຍ ",
-                ai2P3_2: " ຂໍ້ຂັດຂ້ອງທີ່ຍົກໃຫ້ເຫັນຂ້າງລຸ່ມນີ້.",
-                sec3Header: "ຄວາມຕ້ອງການການຊ່ວຍເຫຼືອ",
-                sec3Title: "ການວິເຄາະຄວາມຕ້ອງການ",
-                quotes3Title: "ການຊ່ວຍເຫຼືອທີ່ຮ້ອງຂໍ",
-                ai3P1: "ການວິເຄາະໂດຍ Gemini: ກ່ຽວກັບຄວາມຕ້ອງການໃນອະນາຄົດ, ມີ ",
-                ai3P2: " ຄົນທີ່ໄດ້ລະບຸຄຳຮ້ອງຂໍການຊ່ວຍເຫຼືອຢ່າງຊັດເຈນ.",
-                ai3P3_1: "ຄວາມຕ້ອງການຫຼັກແມ່ນຖືກສະຫຼຸບໂດຍ ",
-                ai3P3_2: " ຕົວຢ່າງການຊ່ວຍເຫຼືອທີ່ຮ້ອງຂໍ ຂ້າງລຸ່ມນີ້."
-            }
-        };
+      <!-- Sheets -->
+      <div class="sidebar-section" id="sheetsSection" style="display:none">
+        <div class="sidebar-title">Sheets</div>
+        <div class="sheet-selector" id="sheetSelector"></div>
+      </div>
 
-        function toggleLanguage() {
-            currentLang = currentLang === 'en' ? 'lo' : 'en';
-            updateUI();
-            if (rawData.length > 0) applyFilters();
-        }
+      <!-- Fields -->
+      <div class="sidebar-section" id="fieldsSection" style="display:none">
+        <div class="sidebar-title">Fields</div>
+        <div class="field-list" id="fieldList"></div>
+      </div>
 
-        function updateUI() {
-            const t = i18n[currentLang];
-            const titleDisplay = uploadedFileName ? `${t.title} - ${uploadedFileName}` : t.title;
-            document.getElementById('ui-title').innerText = titleDisplay;
-            document.getElementById('ui-subtitle').innerText = t.subtitle;
-            document.getElementById('ui-upload-btn').innerText = t.upload;
-            document.getElementById('ui-filter-province').innerText = t.province;
-            document.getElementById('ui-filter-district').innerText = t.district;
-            document.getElementById('ui-gender-title').innerText = t.genderDist;
-            document.getElementById('ui-applied-title').innerText = t.appliedTitle;
-            document.getElementById('ui-male-label').innerText = t.male;
-            document.getElementById('ui-female-label').innerText = t.female;
-            document.getElementById('ui-yes-label').innerText = t.yes;
-            document.getElementById('ui-no-label').innerText = t.no;
-            document.getElementById('ui-total-label').innerText = t.total;
-            document.getElementById('ui-applied-center-label').innerText = t.appliedCenter;
-            document.getElementById('ui-sec1-desc').innerText = t.sec1Desc;
-            document.getElementById('ui-sec1-title').innerText = t.sec1Title;
-            document.getElementById('ui-quotes-title').innerText = t.quotesTitle;
-            document.getElementById('ui-sec2-header').innerText = t.sec2Header;
-            document.getElementById('ui-sec2-title').innerText = t.sec2Title;
-            document.getElementById('ui-quotes2-title').innerText = t.quotes2Title;
-            document.getElementById('ui-sec3-header').innerText = t.sec3Header;
-            document.getElementById('ui-sec3-title').innerText = t.sec3Title;
-            document.getElementById('ui-quotes3-title').innerText = t.quotes3Title;
-            document.getElementById('ui-empty-title').innerText = t.emptyTitle;
-            document.getElementById('ui-empty-desc').innerText = t.emptyDesc;
-            document.getElementById('lang-label').innerText = t.langBtn;
+      <!-- Pivot Configuration -->
+      <div class="sidebar-section" id="pivotConfig" style="display:none">
+        <div class="sidebar-title">Pivot Configuration</div>
+        <div class="pivot-zones">
+          <div class="pivot-zone" id="zone-rows" data-zone="rows">
+            <div class="pivot-zone-label"><span class="pz-icon">↕</span> Rows</div>
+            <div class="zone-chips" id="chips-rows"></div>
+          </div>
+          <div class="pivot-zone" id="zone-cols" data-zone="cols">
+            <div class="pivot-zone-label"><span class="pz-icon">↔</span> Columns</div>
+            <div class="zone-chips" id="chips-cols"></div>
+          </div>
+          <div class="pivot-zone" id="zone-values" data-zone="values">
+            <div class="pivot-zone-label"><span class="pz-icon">Σ</span> Values</div>
+            <div class="zone-chips" id="chips-values"></div>
+          </div>
+          <div class="pivot-zone" id="zone-filters" data-zone="filters">
+            <div class="pivot-zone-label"><span class="pz-icon">⊟</span> Filters</div>
+            <div class="zone-chips" id="chips-filters"></div>
+          </div>
+        </div>
+      </div>
 
-            const provSelect = document.getElementById('filter-province');
-            const distSelect = document.getElementById('filter-district');
-            provSelect.options[0].text = t.allProv;
-            distSelect.options[0].text = t.allDist;
-        }
+      <!-- Aggregation -->
+      <div class="sidebar-section" id="aggSection" style="display:none">
+        <div class="sidebar-title">Aggregation</div>
+        <select class="agg-select" id="aggSelect">
+          <option value="sum">Σ Sum</option>
+          <option value="count">⊞ Count</option>
+          <option value="avg">∅ Average</option>
+          <option value="min">↓ Min</option>
+          <option value="max">↑ Max</option>
+          <option value="countd">◈ Count Distinct</option>
+        </select>
+      </div>
+    </aside>
 
-        async function handleFileUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            uploadedFileName = file.name;
-            updateUI(); // Instantly update title to show filename
-            
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const data = new Uint8Array(e.target.result);
-                // Parse the Excel/CSV file using SheetJS
-                const workbook = XLSX.read(data, {type: 'array'});
-                
-                // Get the first worksheet
-                const firstSheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheetName];
-                
-                // Convert to JSON
-                const jsonArray = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
-                
-                processExcelData(jsonArray);
-            };
-            reader.readAsArrayBuffer(file);
-        }
+    <!-- Content -->
+    <div class="content">
+      <!-- Toolbar -->
+      <div class="toolbar" id="toolbar" style="display:none">
+        <div class="view-tabs">
+          <button class="view-tab active" onclick="setView('pivot')">Pivot</button>
+          <button class="view-tab" onclick="setView('chart')">Chart</button>
+          <button class="view-tab" onclick="setView('raw')">Raw Data</button>
+        </div>
+        <div class="toolbar-sep"></div>
+        <input type="text" class="filter-input" id="filterInput" placeholder="🔍 Search values..." oninput="applyFilter()">
+        <div class="toolbar-sep"></div>
+        <button class="toolbar-btn primary" onclick="buildPivot()">▶ Build Pivot</button>
+        <button class="toolbar-btn" onclick="clearPivot()">✕ Clear</button>
+        <button class="toolbar-btn" onclick="exportCSV()">⬇ Export CSV</button>
+        <div class="toolbar-spacer"></div>
+        <div class="stat-pill">Rows: <span class="val" id="rowCount">0</span></div>
+        <div class="stat-pill">Cols: <span class="val" id="colCount">0</span></div>
+      </div>
 
-        function processExcelData(jsonArray) {
-            if (!jsonArray || jsonArray.length === 0) return;
+      <!-- Pivot area -->
+      <div class="pivot-area" id="pivotArea">
+        <div class="welcome">
+          <div class="welcome-icon">📊</div>
+          <h2>Excel Pivot Analysis</h2>
+          <p>Import any Excel or CSV file and instantly build interactive pivot tables with drag-and-drop fields.</p>
+          <div class="welcome-steps">
+            <div class="step">
+              <div class="step-num">1</div>
+              Drop an Excel file in the sidebar
+            </div>
+            <div class="step">
+              <div class="step-num">2</div>
+              Drag fields into Rows, Cols & Values
+            </div>
+            <div class="step">
+              <div class="step-num">3</div>
+              Click Build Pivot to analyze
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
-            rawData = jsonArray.map(row => {
-                const normalizedRow = {};
-                for (const key in row) {
-                    // Lowercase headers, remove BOMs, and trim to guarantee exact column mapping
-                    const normalizedKey = key.trim().toLowerCase().replace(/^[\uFEFF\xA0]+|[\uFEFF\xA0]+$/g, '');
-                    normalizedRow[normalizedKey] = row[key] !== undefined ? String(row[key]).trim() : "";
-                }
-                return normalizedRow;
-            });
-            
-            populateProvinces();
-            document.getElementById('empty-state').classList.add('hidden');
-            document.getElementById('dashboard-content').classList.remove('hidden');
-            applyFilters();
-        }
+<script>
+let workbook = null;
+let currentSheet = null;
+let rawData = [];
+let headers = [];
+let fieldTypes = {};
+let pivotConfig = { rows: [], cols: [], values: [], filters: [] };
+let currentView = 'pivot';
+let filterText = '';
+let pivotResult = null;
 
-        function populateProvinces() {
-            // Hardcoded specific target provinces
-            const ps = ["Phongsaly", "Oudomxay", "Savannakhet", "Salavan", "Sekong"];
-            const sel = document.getElementById('filter-province');
-            sel.innerHTML = `<option value="">${i18n[currentLang].allProv}</option>`;
-            ps.forEach(p => { const o = document.createElement('option'); o.value = p; o.innerText = p; sel.appendChild(o); });
-        }
+// ---------- FILE LOADING ----------
 
-        function updateDistricts() {
-            const p = document.getElementById('filter-province').value;
-            const sel = document.getElementById('filter-district');
-            
-            // Strictly fetch from "district" column matching the selected province (case-insensitive for robustness)
-            let ds = p ? [...new Set(rawData.filter(d => d['province']?.toLowerCase() === p.toLowerCase()).map(d => d['district']))] : [...new Set(rawData.map(d => d['district']))];
-            ds = ds.filter(Boolean).sort();
-            
-            sel.innerHTML = `<option value="">${i18n[currentLang].allDist}</option>`;
-            ds.forEach(d => { const o = document.createElement('option'); o.value = d; o.innerText = d; sel.appendChild(o); });
-            applyFilters();
-        }
+document.getElementById('fileInput').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (file) loadFile(file);
+});
 
-        function applyFilters() {
-            const p = document.getElementById('filter-province').value;
-            const d = document.getElementById('filter-district').value;
-            let f = rawData;
-            
-            // Case-insensitive filtering to ensure it catches data perfectly regardless of CSV casing
-            if (p) f = f.filter(x => x['province']?.toLowerCase() === p.toLowerCase());
-            if (d) f = f.filter(x => x['district'] === d);
-            
-            updateDashboard(f);
-        }
+const dropZone = document.getElementById('dropZone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) loadFile(file);
+});
 
-        // --- DYNAMIC NLP KEYWORD EXTRACTOR ---
-        function getTopKeywords(texts, limit = 4) {
-            const stopWords = new Set([
-                // English Stopwords + Survey specific common words
-                'the','and','for','that','this','with','from','have','has','are','was','were','will','can','not','about','what','which','when','how','why','who','you','your','they','their','them','our','all','any','some','many','most','other','such','only','also','very','just','than','then','there','these','those','into','upon','over','under','after','before','between','through','during','while','since','until','because','although','though','even','except','without','within','among','against','along','across','behind','beyond','beside','around','down','above','below','near','here','where','every','each','both','neither','either','none','somebody','anyone','nothing','everything','something','anything','him','his','her','she','its','we','us','me','my','mine','myself','yourself','themselves','ourselves','yourselves','himself','herself','itself', 'been', 'would', 'could', 'should', 'whom', 'am', 'is', 'be', 'being', 'had', 'having', 'do', 'does', 'did', 'doing', 'but', 'if', 'or', 'as', 'of', 'at', 'by', 'to', 'up', 'in', 'out', 'on', 'off', 'again', 'further', 'once', 'few', 'more', 'no', 'nor', 'own', 'same', 'so', 'too', 'don', 'now', 'use', 'used', 'using', 'work', 'working', 'skills', 'skill', 'knowledge', 'applied', 'apply', 'organization', 'able', 'think', 'example', 'support', 'need', 'kind', 'workplace', 'training', 'follow', 'after',
-                // Lao Stopwords + Survey specific common words
-                'ແລະ', 'ໃນ', 'ທີ່', 'ຂອງ', 'ການ', 'ເປັນ', 'ໄດ້', 'ມີ', 'ໃຫ້', 'ໄປ', 'ມາ', 'ແຕ່', 'ຈາກ', 'ຈະ', 'ສາມາດ', 'ບໍ່', 'ກ່ຽວກັບ', 'ແມ່ນ', 'ເພື່ອ', 'ກັບ', 'ໂດຍ', 'ຕາມ', 'ແລ້ວ', 'ກໍ່', 'ຈຶ່ງ', 'ຍັງ', 'ຂຶ້ນ', 'ລົງ', 'ເຂົ້າ', 'ອອກ', 'ໃໝ່', 'ເກົ່າ', 'ດີ', 'ຫຼາຍ', 'ນ້ອຍ', 'ໃຫຍ່', 'ເຮັດ', 'ໃຊ້', 'ວ່າ', 'ດັ່ງ', 'ນັ້ນ', 'ນີ້', 'ຕ່າງໆ', 'ບາງ', 'ທຸກ', 'ອື່ນໆ', 'ກຳລັງ', 'ເຄີຍ', 'ອາດ', 'ຕ້ອງ', 'ພວກ', 'ເຮົາ', 'ເຂົາ', 'ເຈົ້າ', 'ຂ້ອຍ', 'ລາວ', 'ມັນ', 'ຊ່ວຍ', 'ຕັ້ງ', 'ເຖິງ', 'ຈົນ', 'ພ້ອມ', 'ເຊິ່ງ', 'ທັງ', 'ຍ້ອນ', 'ຢ່າງ', 'ກໍ', 'ແຫ່ງ', 'ຄວາມ', 'ຮູ້', 'ທັກສະ', 'ວຽກ', 'ງານ', 'ເອົາ', 'ນຳ', 'ບ່ອນ'
-            ]);
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      workbook = XLSX.read(e.target.result, { type: 'binary', cellDates: true });
+      document.getElementById('filenameBadge').textContent = file.name;
+      populateSheets();
+      notify(`✓ Loaded: ${file.name}`);
+    } catch (err) {
+      notify('⚠ Error reading file');
+    }
+  };
+  reader.readAsBinaryString(file);
+}
 
-            let wordCounts = {};
-            texts.forEach(text => {
-                let words = text.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()""''\n\r]/g," ").split(/\s+/);
-                let uniqueWords = [...new Set(words)]; // document frequency tracking
-                uniqueWords.forEach(w => {
-                    if(w.length > 2 && !stopWords.has(w) && isNaN(w)) {
-                        wordCounts[w] = (wordCounts[w] || 0) + 1;
-                    }
-                });
-            });
+function populateSheets() {
+  const sel = document.getElementById('sheetSelector');
+  sel.innerHTML = '';
+  workbook.SheetNames.forEach((name, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'sheet-btn' + (i === 0 ? ' active' : '');
+    btn.textContent = name;
+    btn.onclick = () => {
+      document.querySelectorAll('.sheet-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      loadSheet(name);
+    };
+    sel.appendChild(btn);
+  });
+  document.getElementById('sheetsSection').style.display = 'block';
+  loadSheet(workbook.SheetNames[0]);
+}
 
-            let sortedWords = Object.keys(wordCounts).sort((a, b) => wordCounts[b] - wordCounts[a]);
-            return sortedWords.slice(0, limit);
-        }
+function loadSheet(name) {
+  currentSheet = name;
+  const ws = workbook.Sheets[name];
+  rawData = XLSX.utils.sheet_to_json(ws, { defval: '', raw: false });
+  if (rawData.length === 0) return;
+  headers = Object.keys(rawData[0]);
+  detectFieldTypes();
+  renderFieldList();
+  resetPivotZones();
+  document.getElementById('fieldsSection').style.display = 'block';
+  document.getElementById('pivotConfig').style.display = 'block';
+  document.getElementById('aggSection').style.display = 'block';
+  document.getElementById('toolbar').style.display = 'flex';
+  document.getElementById('rowCount').textContent = rawData.length;
+  document.getElementById('colCount').textContent = headers.length;
+  showRawData();
+}
 
-        function updateDashboard(data) {
-            const total = data.length;
-            const t = i18n[currentLang];
+function detectFieldTypes() {
+  fieldTypes = {};
+  headers.forEach(h => {
+    let nums = 0, dates = 0, total = Math.min(rawData.length, 50);
+    for (let i = 0; i < total; i++) {
+      const v = rawData[i][h];
+      if (v !== '' && !isNaN(Number(v))) nums++;
+      else if (v instanceof Date || /^\d{4}-\d{2}-\d{2}/.test(String(v))) dates++;
+    }
+    if (nums / total > 0.7) fieldTypes[h] = 'num';
+    else if (dates / total > 0.5) fieldTypes[h] = 'date';
+    else fieldTypes[h] = 'str';
+  });
+}
 
-            // Gender
-            const male = data.filter(d => d['gender']?.toLowerCase() === 'male' || d['gender'] === 'ຊາຍ').length;
-            const female = total - male;
-            const malePct = total > 0 ? Math.round((male/total)*100) : 0;
-            const femalePct = total > 0 ? (100 - malePct) : 0;
-            document.getElementById('total-count-gender').innerText = total;
-            document.getElementById('male-pct').innerText = `${male} (${malePct}%)`;
-            document.getElementById('female-pct').innerText = `${female} (${femalePct}%)`;
-            document.getElementById('chart-gender').style.background = `conic-gradient(#3b82f6 0% ${malePct}%, #f472b6 ${malePct}% 100%)`;
+function renderFieldList() {
+  const list = document.getElementById('fieldList');
+  list.innerHTML = '';
+  headers.forEach(h => {
+    const chip = document.createElement('div');
+    chip.className = 'field-chip';
+    chip.draggable = true;
+    chip.dataset.field = h;
 
-            // Applied Knowledge
-            const appliedYes = data.filter(d => {
-                const val = (d['skill knowledge using'] || '').trim().toLowerCase();
-                return ['yes', 'ແມ່ນ', 'y'].includes(val);
-            }).length;
-            const appliedNo = total - appliedYes;
-            const appliedPct = total > 0 ? Math.round((appliedYes/total)*100) : 0;
-            const notAppliedPct = total > 0 ? (100 - appliedPct) : 0;
-            document.getElementById('applied-count-value').innerText = appliedYes;
-            document.getElementById('applied-pct').innerText = `${appliedYes} (${appliedPct}%)`;
-            document.getElementById('not-applied-pct').innerText = `${appliedNo} (${notAppliedPct}%)`;
-            document.getElementById('chart-applied').style.background = `conic-gradient(#10b981 0% ${appliedPct}%, #e2e8f0 ${appliedPct}% 100%)`;
+    const typeIcon = { num: 'N', str: 'A', date: 'D' }[fieldTypes[h]] || 'A';
+    const typeClass = { num: 'type-num', str: 'type-str', date: 'type-date' }[fieldTypes[h]] || 'type-str';
 
-            // Section 1 qualitative stats (Lowercased to match headers)
-            const colEx = "example of how you have applied that skill or knowledge in your work?".toLowerCase();
-            const validTexts = data.map(d => d[colEx]).filter(q => q && q.length > 15);
-            const richCount = validTexts.length;
-            document.getElementById('qual-total').innerText = total;
-            document.getElementById('qual-rich').innerText = richCount;
+    chip.innerHTML = `<span class="field-type ${typeClass}">${typeIcon}</span>${h}`;
+    chip.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('field', h);
+      chip.classList.add('dragging');
+    });
+    chip.addEventListener('dragend', () => chip.classList.remove('dragging'));
+    list.appendChild(chip);
+  });
+}
 
-            // Generate Quotes for Section 1 first so we can count them
-            const quotesContainer = document.getElementById('quotes-container');
-            quotesContainer.innerHTML = '';
-            const quotes = [...new Set(data.map(d => d[colEx]).filter(q => q && q.length > 20))].slice(0, 5);
+// ---------- DRAG & DROP ZONES ----------
 
-            // Extract dynamic keywords based on dataset text frequencies
-            const topKeywords = getTopKeywords(validTexts, 4);
-            const dynamicKeywordsText = topKeywords.length > 0 
-                ? topKeywords.map(w => `<span class="bg-purple-100 text-purple-700 px-2 py-0.5 rounded uppercase text-xs font-bold">${w}</span>`).join(' ')
-                : (currentLang === 'en' ? 'general practical activities' : 'ກິດຈະກຳຕົວຈິງທົ່ວໄປ');
+['rows', 'cols', 'values', 'filters'].forEach(zone => {
+  const el = document.getElementById(`zone-${zone}`);
+  el.addEventListener('dragover', e => { e.preventDefault(); el.classList.add('drag-target'); });
+  el.addEventListener('dragleave', () => el.classList.remove('drag-target'));
+  el.addEventListener('drop', e => {
+    e.preventDefault();
+    el.classList.remove('drag-target');
+    const field = e.dataTransfer.getData('field');
+    if (field && !pivotConfig[zone].includes(field)) {
+      pivotConfig[zone].push(field);
+      renderZoneChips();
+    }
+  });
+});
 
-            // Find the most representative full sentences based on those keywords
-            let scoredSentences = validTexts.map(text => {
-                const lowerText = text.toLowerCase();
-                let score = 0;
-                topKeywords.forEach(kw => {
-                    if (lowerText.includes(kw)) score++;
-                });
-                return { text, score };
-            }).filter(item => item.text.length > 30 && item.text.length < 500);
+function renderZoneChips() {
+  ['rows', 'cols', 'values', 'filters'].forEach(zone => {
+    const container = document.getElementById(`chips-${zone}`);
+    container.innerHTML = '';
+    pivotConfig[zone].forEach(field => {
+      const chip = document.createElement('div');
+      chip.className = 'zone-chip';
+      chip.innerHTML = `${field}<span class="remove-btn" onclick="removeField('${zone}','${field}')">×</span>`;
+      container.appendChild(chip);
+    });
+  });
+}
 
-            // Sort by score first, then by length
-            scoredSentences.sort((a, b) => b.score - a.score || b.text.length - a.text.length);
+function removeField(zone, field) {
+  pivotConfig[zone] = pivotConfig[zone].filter(f => f !== field);
+  renderZoneChips();
+}
 
-            // Get up to 3 unique top sentences
-            let bestSentences = [...new Set(scoredSentences.map(item => item.text))].slice(0, 3);
+function resetPivotZones() {
+  pivotConfig = { rows: [], cols: [], values: [], filters: [] };
+  renderZoneChips();
+  document.getElementById('pivotArea').innerHTML = '';
+  showRawData();
+}
 
-            // Fallback to the longest valid sentences if scoring fails
-            if (bestSentences.length === 0 && validTexts.length > 0) {
-                bestSentences = [...new Set(validTexts)].sort((a, b) => b.length - a.length).slice(0, 3);
-            }
+// ---------- BUILD PIVOT ----------
 
-            const sentencesListHtml = bestSentences.map(s => `<p class="text-slate-800 italic font-medium leading-relaxed mb-4 pb-4 border-b border-purple-200/50 last:mb-0 last:pb-0 last:border-0">"${s}"</p>`).join('');
+function buildPivot() {
+  const { rows, cols, values } = pivotConfig;
+  const agg = document.getElementById('aggSelect').value;
 
-            const fullSentenceHtml = bestSentences.length > 0 
-                ? `<div class="mt-4 p-5 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl border border-purple-100 shadow-inner"><p class="text-[10px] font-bold text-purple-500 uppercase tracking-widest mb-3 flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>${t.repSentenceLabel} (Top ${bestSentences.length})</p>${sentencesListHtml}</div>`
-                : '';
+  if (rows.length === 0 && cols.length === 0) {
+    notify('⚠ Add at least one Row or Column field');
+    return;
+  }
+  if (values.length === 0) {
+    notify('⚠ Add at least one Values field');
+    return;
+  }
 
-            // AI Narrative summary insight by Gemini
-            document.getElementById('ai-summary').innerHTML = `
-                <p>${t.aiP1} <b>${total}</b> ${t.aiP2} <b>${total > 0 ? Math.round((richCount/total)*100) : 0}%</b> ${t.aiP3}</p>
-                <p class="border-l-4 border-purple-200 pl-4 italic text-slate-500 mt-4 mb-4">${t.aiP4_1}<b>${quotes.length}</b>${t.aiP4_2}</p>
-                <p class="leading-relaxed mb-2">${t.aiP5} <b>${richCount}</b> ${t.aiP6_1}</p>
-                <p class="leading-relaxed">${t.aiP6_2} <span class="inline-flex items-center gap-1.5 mx-1">${dynamicKeywordsText}</span>. ${t.aiP6_3}</p>
-                ${fullSentenceHtml}
-            `;
-            
-            if (quotes.length === 0) {
-                quotesContainer.innerHTML = `<p class="text-slate-400 text-center py-10">${t.noQuotes}</p>`;
-            } else {
-                quotes.forEach(q => {
-                    const div = document.createElement('div');
-                    div.className = 'bg-white p-4 rounded-2xl border border-slate-100 shadow-sm';
-                    div.innerHTML = `
-                        <p class="text-slate-600 text-sm leading-relaxed">"${q}"</p>
-                        <div class="mt-2 text-[10px] font-bold text-slate-300 uppercase tracking-tighter">Verified Implementation</div>
-                    `;
-                    quotesContainer.appendChild(div);
-                });
-            }
+  const data = filterText
+    ? rawData.filter(row => headers.some(h => String(row[h]).toLowerCase().includes(filterText)))
+    : rawData;
 
-            // Section 2 qualitative stats
-            const colWhy = "Why do you think you were not able to apply those skills or knowledge in your work or at your organization?".toLowerCase();
-            const validTexts2 = data.map(d => d[colWhy]).filter(q => q && q.length > 15);
-            const richWhyCount = validTexts2.length;
-            
-            // Generate Quotes for Section 2 first so we can count them
-            const quotesContainer2 = document.getElementById('quotes-container-2');
-            quotesContainer2.innerHTML = '';
-            const quotes2 = [...new Set(data.map(d => d[colWhy]).filter(q => q && q.length > 20))].slice(0, 5);
-            
-            // Extract dynamic keywords based on dataset text frequencies
-            const topKeywords2 = getTopKeywords(validTexts2, 4);
-            const dynamicKeywordsText2 = topKeywords2.length > 0 
-                ? topKeywords2.map(w => `<span class="bg-rose-100 text-rose-700 px-2 py-0.5 rounded uppercase text-xs font-bold">${w}</span>`).join(' ')
-                : (currentLang === 'en' ? 'general challenges' : 'ສິ່ງທ້າທາຍທົ່ວໄປ');
+  const valueField = values[0];
+  const rowKeys = [...new Set(data.map(r => rows.map(f => r[f]).join(' › ')))].sort();
+  const colKeys = cols.length > 0
+    ? [...new Set(data.map(r => cols.map(f => r[f]).join(' › ')))].sort()
+    : ['Value'];
 
-            // Find the most representative full sentences based on those keywords
-            let scoredSentences2 = validTexts2.map(text => {
-                const lowerText = text.toLowerCase();
-                let score = 0;
-                topKeywords2.forEach(kw => {
-                    if (lowerText.includes(kw)) score++;
-                });
-                return { text, score };
-            }).filter(item => item.text.length > 30 && item.text.length < 500);
+  // Build cell map
+  const cellMap = {};
+  data.forEach(row => {
+    const rk = rows.map(f => row[f]).join(' › ');
+    const ck = cols.length > 0 ? cols.map(f => row[f]).join(' › ') : 'Value';
+    const key = `${rk}||${ck}`;
+    if (!cellMap[key]) cellMap[key] = [];
+    const v = parseFloat(row[valueField]);
+    if (!isNaN(v)) cellMap[key].push(v);
+    else cellMap[key].push(row[valueField]);
+  });
 
-            scoredSentences2.sort((a, b) => b.score - a.score || b.text.length - a.text.length);
+  const aggregate = (arr) => {
+    const nums = arr.filter(v => typeof v === 'number');
+    if (nums.length === 0) return agg === 'count' ? arr.length : agg === 'countd' ? new Set(arr).size : '';
+    switch (agg) {
+      case 'sum': return nums.reduce((a, b) => a + b, 0);
+      case 'count': return arr.length;
+      case 'avg': return nums.reduce((a, b) => a + b, 0) / nums.length;
+      case 'min': return Math.min(...nums);
+      case 'max': return Math.max(...nums);
+      case 'countd': return new Set(arr).size;
+      default: return nums.reduce((a, b) => a + b, 0);
+    }
+  };
 
-            let bestSentences2 = [...new Set(scoredSentences2.map(item => item.text))].slice(0, 3);
+  // Build result grid
+  const grid = {};
+  rowKeys.forEach(rk => {
+    grid[rk] = {};
+    colKeys.forEach(ck => {
+      const arr = cellMap[`${rk}||${ck}`] || [];
+      grid[rk][ck] = arr.length > 0 ? aggregate(arr) : null;
+    });
+  });
 
-            // Fallback to the longest valid sentences if scoring fails
-            if (bestSentences2.length === 0 && validTexts2.length > 0) {
-                bestSentences2 = [...new Set(validTexts2)].sort((a, b) => b.length - a.length).slice(0, 3);
-            }
+  // Column totals
+  const colTotals = {};
+  colKeys.forEach(ck => {
+    const vals = rowKeys.map(rk => grid[rk][ck]).filter(v => v !== null && typeof v === 'number');
+    colTotals[ck] = vals.length > 0 ? aggregate(vals) : null;
+  });
 
-            const sentencesListHtml2 = bestSentences2.map(s => `<p class="text-slate-800 italic font-medium leading-relaxed mb-4 pb-4 border-b border-rose-200/50 last:mb-0 last:pb-0 last:border-0">"${s}"</p>`).join('');
+  pivotResult = { rowKeys, colKeys, grid, colTotals, valueField, agg };
+  renderPivotTable(pivotResult);
+  setView(currentView);
+}
 
-            const fullSentenceHtml2 = bestSentences2.length > 0 
-                ? `<div class="mt-4 p-5 bg-gradient-to-r from-rose-50 to-red-50 rounded-xl border border-rose-100 shadow-inner"><p class="text-[10px] font-bold text-rose-500 uppercase tracking-widest mb-3 flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>${t.repSentenceLabel} (Top ${bestSentences2.length})</p>${sentencesListHtml2}</div>`
-                : '';
+function fmt(v) {
+  if (v === null || v === undefined || v === '') return '—';
+  if (typeof v === 'number') {
+    if (Number.isInteger(v)) return v.toLocaleString();
+    return v.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 });
+  }
+  return v;
+}
 
-            document.getElementById('ai-summary-2').innerHTML = `
-                <p class="leading-relaxed">${t.ai2P1} <b>${richWhyCount}</b> ${t.ai2P2}</p>
-                <p class="border-l-4 border-rose-200 pl-4 italic text-slate-500 mt-4 mb-4">${t.ai2P3_1}<b>${quotes2.length}</b>${t.ai2P3_2}</p>
-                <p class="leading-relaxed">${t.aiP6_2} <span class="inline-flex items-center gap-1.5 mx-1">${dynamicKeywordsText2}</span>. ${t.aiP6_3}</p>
-                ${fullSentenceHtml2}
-            `;
+function renderPivotTable(result) {
+  const { rowKeys, colKeys, grid, colTotals, valueField, agg } = result;
+  const allVals = rowKeys.flatMap(rk => colKeys.map(ck => grid[rk][ck])).filter(v => v !== null && typeof v === 'number');
+  const maxVal = Math.max(...allVals, 1);
 
-            if (quotes2.length === 0) {
-                quotesContainer2.innerHTML = `<p class="text-slate-400 text-center py-10">${t.noQuotes}</p>`;
-            } else {
-                quotes2.forEach(q => {
-                    const div = document.createElement('div');
-                    div.className = 'bg-white p-4 rounded-2xl border border-slate-100 shadow-sm';
-                    div.innerHTML = `
-                        <p class="text-slate-600 text-sm leading-relaxed">"${q}"</p>
-                        <div class="mt-2 text-[10px] font-bold text-slate-300 uppercase tracking-tighter">Reported Challenge</div>
-                    `;
-                    quotesContainer2.appendChild(div);
-                });
-            }
+  let html = `
+    <div class="pivot-table-wrap">
+      <table class="pivot-table">
+        <thead><tr>
+          <th class="row-header">${pivotConfig.rows.join(' / ') || '—'}</th>
+          ${colKeys.map(ck => `<th class="col-header">${ck}</th>`).join('')}
+          <th class="col-header" style="color:var(--accent)">Grand Total</th>
+        </tr></thead>
+        <tbody>
+  `;
 
-            // Section 3 qualitative stats
-            const colSupport = "What kind of support would you need to apply those skills or knowledge in your work?".toLowerCase();
-            const validTexts3 = data.map(d => d[colSupport]).filter(q => q && q.length > 15);
-            const richSupportCount = validTexts3.length;
-            
-            // Generate Quotes for Section 3 first so we can count them
-            const quotesContainer3 = document.getElementById('quotes-container-3');
-            quotesContainer3.innerHTML = '';
-            const quotes3 = [...new Set(data.map(d => d[colSupport]).filter(q => q && q.length > 20))].slice(0, 5);
-            
-            // Extract dynamic keywords based on dataset text frequencies
-            const topKeywords3 = getTopKeywords(validTexts3, 4);
-            const dynamicKeywordsText3 = topKeywords3.length > 0 
-                ? topKeywords3.map(w => `<span class="bg-teal-100 text-teal-700 px-2 py-0.5 rounded uppercase text-xs font-bold">${w}</span>`).join(' ')
-                : (currentLang === 'en' ? 'general support' : 'ການຊ່ວຍເຫຼືອທົ່ວໄປ');
+  rowKeys.forEach(rk => {
+    const rowVals = colKeys.map(ck => grid[rk][ck]).filter(v => v !== null && typeof v === 'number');
+    const rowTotal = rowVals.length > 0 ? rowVals.reduce((a, b) => a + b, 0) : null;
+    html += `<tr><td class="row-label">${rk || '(blank)'}</td>`;
+    colKeys.forEach(ck => {
+      const v = grid[rk][ck];
+      const pct = (typeof v === 'number' && maxVal > 0) ? Math.round((v / maxVal) * 100) : 0;
+      html += `<td class="value-cell">
+        <div class="bar-cell">
+          <div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div>
+          ${fmt(v)}
+        </div>
+      </td>`;
+    });
+    html += `<td class="value-cell total-row">${fmt(rowTotal)}</td></tr>`;
+  });
 
-            // Find the most representative full sentences based on those keywords
-            let scoredSentences3 = validTexts3.map(text => {
-                const lowerText = text.toLowerCase();
-                let score = 0;
-                topKeywords3.forEach(kw => {
-                    if (lowerText.includes(kw)) score++;
-                });
-                return { text, score };
-            }).filter(item => item.text.length > 30 && item.text.length < 500);
+  // Grand total row
+  const grandTotal = Object.values(colTotals).filter(v => typeof v === 'number').reduce((a, b) => a + b, 0);
+  html += `<tr>
+    <td class="row-label total-row" style="color:var(--accent)">Grand Total</td>
+    ${colKeys.map(ck => `<td class="value-cell grand-total">${fmt(colTotals[ck])}</td>`).join('')}
+    <td class="value-cell grand-total">${fmt(grandTotal)}</td>
+  </tr>`;
 
-            scoredSentences3.sort((a, b) => b.score - a.score || b.text.length - a.text.length);
+  html += `</tbody></table></div>`;
 
-            let bestSentences3 = [...new Set(scoredSentences3.map(item => item.text))].slice(0, 3);
+  // Chart
+  const chartBars = rowKeys.slice(0, 20).map(rk => {
+    const v = colKeys.reduce((sum, ck) => {
+      const val = grid[rk][ck];
+      return sum + (typeof val === 'number' ? val : 0);
+    }, 0);
+    return { label: rk, value: v };
+  });
+  const maxChart = Math.max(...chartBars.map(b => b.value), 1);
 
-            // Fallback to the longest valid sentences if scoring fails
-            if (bestSentences3.length === 0 && validTexts3.length > 0) {
-                bestSentences3 = [...new Set(validTexts3)].sort((a, b) => b.length - a.length).slice(0, 3);
-            }
+  html += `<div class="chart-area">
+    <div class="chart-title">📊 ${agg.toUpperCase()} of ${valueField} by ${pivotConfig.rows[0] || 'Row'}</div>
+    <div class="bar-chart">
+      ${chartBars.map(b => {
+        const h = Math.round((b.value / maxChart) * 110);
+        return `<div class="chart-bar-wrap">
+          <span class="chart-val">${b.value >= 1000 ? (b.value/1000).toFixed(1)+'k' : Math.round(b.value)}</span>
+          <div class="chart-bar" style="height:${h}px" title="${b.label}: ${fmt(b.value)}">
+            <span class="chart-bar-label">${b.label}</span>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
 
-            const sentencesListHtml3 = bestSentences3.map(s => `<p class="text-slate-800 italic font-medium leading-relaxed mb-4 pb-4 border-b border-teal-200/50 last:mb-0 last:pb-0 last:border-0">"${s}"</p>`).join('');
+  document.getElementById('pivotArea').innerHTML = html;
+}
 
-            const fullSentenceHtml3 = bestSentences3.length > 0 
-                ? `<div class="mt-4 p-5 bg-gradient-to-r from-teal-50 to-emerald-50 rounded-xl border border-teal-100 shadow-inner"><p class="text-[10px] font-bold text-teal-500 uppercase tracking-widest mb-3 flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>${t.repSentenceLabel} (Top ${bestSentences3.length})</p>${sentencesListHtml3}</div>`
-                : '';
+function showRawData() {
+  if (!rawData.length) return;
+  const preview = rawData.slice(0, 200);
+  const html = `
+    <div class="raw-table-wrap">
+      <table class="raw-table">
+        <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+        <tbody>${preview.map(row => `<tr>${headers.map(h => `<td>${row[h] ?? ''}</td>`).join('')}</tr>`).join('')}</tbody>
+      </table>
+    </div>
+    ${rawData.length > 200 ? `<div style="text-align:center;font-size:11px;color:var(--text3);padding:8px">Showing 200 of ${rawData.length} rows</div>` : ''}
+  `;
+  document.getElementById('pivotArea').innerHTML = html;
+}
 
-            document.getElementById('ai-summary-3').innerHTML = `
-                <p class="leading-relaxed">${t.ai3P1} <b>${richSupportCount}</b> ${t.ai3P2}</p>
-                <p class="border-l-4 border-teal-200 pl-4 italic text-slate-500 mt-4 mb-4">${t.ai3P3_1}<b>${quotes3.length}</b>${t.ai3P3_2}</p>
-                <p class="leading-relaxed">${t.aiP6_2} <span class="inline-flex items-center gap-1.5 mx-1">${dynamicKeywordsText3}</span>. ${t.aiP6_3}</p>
-                ${fullSentenceHtml3}
-            `;
+function setView(v) {
+  currentView = v;
+  document.querySelectorAll('.view-tab').forEach((t, i) => {
+    t.classList.toggle('active', ['pivot','chart','raw'][i] === v);
+  });
+  if (v === 'raw') { showRawData(); return; }
+  if (v === 'pivot' || v === 'chart') {
+    if (pivotResult) renderPivotTable(pivotResult);
+    else document.getElementById('pivotArea').innerHTML = '<div class="empty-state"><div class="empty-state-icon">📐</div>Configure fields and click Build Pivot</div>';
+  }
+}
 
-            if (quotes3.length === 0) {
-                quotesContainer3.innerHTML = `<p class="text-slate-400 text-center py-10">${t.noQuotes}</p>`;
-            } else {
-                quotes3.forEach(q => {
-                    const div = document.createElement('div');
-                    div.className = 'bg-white p-4 rounded-2xl border border-slate-100 shadow-sm';
-                    div.innerHTML = `
-                        <p class="text-slate-600 text-sm leading-relaxed">"${q}"</p>
-                        <div class="mt-2 text-[10px] font-bold text-slate-300 uppercase tracking-tighter">Support Request</div>
-                    `;
-                    quotesContainer3.appendChild(div);
-                });
-            }
-        }
+function clearPivot() {
+  pivotResult = null;
+  pivotConfig = { rows: [], cols: [], values: [], filters: [] };
+  renderZoneChips();
+  showRawData();
+}
 
-        window.onload = updateUI;
-    </script>
+function applyFilter() {
+  filterText = document.getElementById('filterInput').value.toLowerCase();
+}
+
+function exportCSV() {
+  if (!pivotResult) { notify('⚠ Build a pivot first'); return; }
+  const { rowKeys, colKeys, grid, colTotals } = pivotResult;
+  const rows = [['', ...colKeys, 'Grand Total']];
+  rowKeys.forEach(rk => {
+    const rowVals = colKeys.map(ck => grid[rk][ck] ?? '');
+    const total = rowVals.filter(v => typeof v === 'number').reduce((a, b) => a + b, 0);
+    rows.push([rk, ...rowVals, total]);
+  });
+  rows.push(['Grand Total', ...colKeys.map(ck => colTotals[ck] ?? ''), Object.values(colTotals).filter(v => typeof v === 'number').reduce((a, b) => a + b, 0)]);
+  const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'pivot_export.csv'; a.click();
+  notify('✓ Exported CSV');
+}
+
+function notify(msg) {
+  const n = document.createElement('div');
+  n.className = 'notification';
+  n.textContent = msg;
+  document.body.appendChild(n);
+  setTimeout(() => n.remove(), 3000);
+}
+</script>
 </body>
 </html>
