@@ -1,1241 +1,850 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="lo">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DataPivot — Excel Analysis Studio</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap');
-
-  :root {
-    --bg: #0a0d14;
-    --surface: #111520;
-    --surface2: #161b28;
-    --surface3: #1c2235;
-    --border: #252d42;
-    --border2: #2e3a55;
-    --accent: #4f8ef7;
-    --accent2: #7c5af7;
-    --accent3: #f75a8e;
-    --green: #3ecf8e;
-    --yellow: #f5c842;
-    --text: #e8edf5;
-    --text2: #8a97b0;
-    --text3: #4e5f7a;
-    --glow: rgba(79,142,247,0.15);
-    --radius: 10px;
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    font-family: 'DM Mono', monospace;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-
-  /* Grid background */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image:
-      linear-gradient(var(--border) 1px, transparent 1px),
-      linear-gradient(90deg, var(--border) 1px, transparent 1px);
-    background-size: 40px 40px;
-    opacity: 0.3;
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  .app {
-    position: relative;
-    z-index: 1;
-    display: grid;
-    grid-template-rows: auto 1fr;
-    min-height: 100vh;
-  }
-
-  /* Header */
-  header {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 0 28px;
-    display: flex;
-    align-items: center;
-    gap: 24px;
-    height: 60px;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    backdrop-filter: blur(10px);
-  }
-
-  .logo {
-    font-family: 'Syne', sans-serif;
-    font-weight: 800;
-    font-size: 18px;
-    color: var(--text);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .logo-icon {
-    width: 28px; height: 28px;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    border-radius: 6px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 14px;
-  }
-
-  .header-divider { flex: 1; }
-
-  .badge {
-    font-size: 11px;
-    padding: 3px 10px;
-    border-radius: 20px;
-    border: 1px solid var(--border2);
-    color: var(--text2);
-    letter-spacing: 0.05em;
-  }
-
-  /* Layout */
-  .main {
-    display: grid;
-    grid-template-columns: 260px 1fr;
-    grid-template-rows: 1fr;
-    height: calc(100vh - 60px);
-  }
-
-  /* Sidebar */
-  .sidebar {
-    background: var(--surface);
-    border-right: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
-  }
-
-  .sidebar-section {
-    border-bottom: 1px solid var(--border);
-    padding: 16px;
-  }
-
-  .sidebar-title {
-    font-family: 'Syne', sans-serif;
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--text3);
-    margin-bottom: 12px;
-  }
-
-  /* Import area */
-  .drop-zone {
-    border: 2px dashed var(--border2);
-    border-radius: var(--radius);
-    padding: 20px 12px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s;
-    background: var(--surface2);
-  }
-
-  .drop-zone:hover, .drop-zone.drag-over {
-    border-color: var(--accent);
-    background: var(--glow);
-  }
-
-  .drop-zone-icon { font-size: 24px; margin-bottom: 8px; }
-  .drop-zone-text { font-size: 11px; color: var(--text2); line-height: 1.5; }
-  .drop-zone-text strong { color: var(--accent); display: block; margin-bottom: 2px; font-size: 12px; }
-
-  #fileInput { display: none; }
-
-  /* Sheet selector */
-  .sheet-selector {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .sheet-btn {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 7px 10px;
-    color: var(--text2);
-    font-family: 'DM Mono', monospace;
-    font-size: 12px;
-    cursor: pointer;
-    text-align: left;
-    transition: all 0.15s;
-  }
-
-  .sheet-btn:hover { border-color: var(--border2); color: var(--text); }
-  .sheet-btn.active { border-color: var(--accent); color: var(--accent); background: var(--glow); }
-
-  /* Field list */
-  .field-list {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    max-height: 180px;
-    overflow-y: auto;
-  }
-
-  .field-chip {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 10px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    font-size: 11px;
-    color: var(--text2);
-    cursor: grab;
-    transition: all 0.15s;
-    user-select: none;
-  }
-
-  .field-chip:hover { border-color: var(--border2); color: var(--text); }
-  .field-chip.dragging { opacity: 0.4; }
-
-  .field-type {
-    width: 20px; height: 20px;
-    border-radius: 4px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 9px;
-    font-weight: 700;
-    flex-shrink: 0;
-  }
-
-  .type-num { background: rgba(79,142,247,0.2); color: var(--accent); }
-  .type-str { background: rgba(62,207,142,0.2); color: var(--green); }
-  .type-date { background: rgba(245,200,66,0.2); color: var(--yellow); }
-
-  /* Drop zones for pivot */
-  .pivot-zones {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .pivot-zone {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 8px;
-    min-height: 60px;
-    transition: all 0.2s;
-  }
-
-  .pivot-zone.drag-target { border-color: var(--accent); background: var(--glow); }
-
-  .pivot-zone-label {
-    font-size: 9px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--text3);
-    margin-bottom: 6px;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-  }
-
-  .pz-icon { font-size: 11px; }
-
-  .zone-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    min-height: 24px;
-  }
-
-  .zone-chip {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 3px 8px;
-    border-radius: 4px;
-    font-size: 10px;
-    color: var(--text);
-    background: var(--surface3);
-    border: 1px solid var(--border2);
-  }
-
-  .zone-chip .remove-btn {
-    cursor: pointer;
-    color: var(--text3);
-    font-size: 12px;
-    line-height: 1;
-    transition: color 0.1s;
-  }
-
-  .zone-chip .remove-btn:hover { color: var(--accent3); }
-
-  /* Aggregation select */
-  .agg-select {
-    width: 100%;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 6px 10px;
-    color: var(--text);
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    cursor: pointer;
-    outline: none;
-  }
-
-  .agg-select:focus { border-color: var(--accent); }
-
-  /* Main content */
-  .content {
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  /* Toolbar */
-  .toolbar {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 10px 20px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-
-  .toolbar-btn {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 6px 14px;
-    color: var(--text2);
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    cursor: pointer;
-    transition: all 0.15s;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .toolbar-btn:hover { border-color: var(--border2); color: var(--text); }
-
-  .toolbar-btn.primary {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: white;
-  }
-
-  .toolbar-btn.primary:hover { background: #3a7de8; }
-
-  .toolbar-sep { width: 1px; height: 24px; background: var(--border); }
-  .toolbar-spacer { flex: 1; }
-
-  .stat-pill {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 12px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    font-size: 11px;
-    color: var(--text2);
-  }
-
-  .stat-pill .val { color: var(--green); font-weight: 500; }
-
-  /* Pivot output */
-  .pivot-area {
-    flex: 1;
-    overflow: auto;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  /* Welcome screen */
-  .welcome {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-    text-align: center;
-    padding: 40px;
-  }
-
-  .welcome-icon {
-    width: 80px; height: 80px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 36px;
-    animation: float 3s ease-in-out infinite;
-  }
-
-  @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-8px); }
-  }
-
-  .welcome h2 {
-    font-family: 'Syne', sans-serif;
-    font-size: 22px;
-    font-weight: 700;
-  }
-
-  .welcome p { color: var(--text2); font-size: 13px; max-width: 380px; line-height: 1.7; }
-
-  .welcome-steps {
-    display: flex;
-    gap: 12px;
-    margin-top: 8px;
-  }
-
-  .step {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 14px 18px;
-    text-align: center;
-    font-size: 11px;
-    color: var(--text2);
-    width: 130px;
-  }
-
-  .step-num {
-    width: 24px; height: 24px;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 11px;
-    font-weight: 700;
-    color: white;
-    margin: 0 auto 8px;
-  }
-
-  /* Pivot table */
-  .pivot-table-wrap {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: auto;
-    max-height: calc(100vh - 200px);
-  }
-
-  .pivot-table {
-    border-collapse: collapse;
-    font-size: 12px;
-    min-width: 100%;
-  }
-
-  .pivot-table th {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    padding: 8px 14px;
-    text-align: left;
-    font-family: 'Syne', sans-serif;
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--text2);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    white-space: nowrap;
-  }
-
-  .pivot-table th.row-header {
-    background: var(--surface3);
-    color: var(--accent);
-    left: 0;
-    z-index: 3;
-  }
-
-  .pivot-table th.col-header {
-    background: var(--surface2);
-  }
-
-  .pivot-table td {
-    border: 1px solid var(--border);
-    padding: 7px 14px;
-    transition: background 0.1s;
-    white-space: nowrap;
-  }
-
-  .pivot-table tr:hover td { background: var(--surface2); }
-
-  .pivot-table td.row-label {
-    background: var(--surface2);
-    color: var(--text);
-    font-weight: 500;
-    position: sticky;
-    left: 0;
-    z-index: 1;
-    border-right: 2px solid var(--border2);
-  }
-
-  .pivot-table td.value-cell {
-    text-align: right;
-    color: var(--text2);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .pivot-table td.total-row {
-    background: rgba(79,142,247,0.07);
-    color: var(--accent);
-    font-weight: 600;
-    border-top: 2px solid var(--border2);
-  }
-
-  .pivot-table td.grand-total {
-    background: rgba(79,142,247,0.15);
-    color: var(--accent);
-    font-weight: 700;
-    border-top: 2px solid var(--accent);
-  }
-
-  /* Bar visualization inside cells */
-  .bar-cell {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    justify-content: flex-end;
-  }
-
-  .bar-bg {
-    flex: 1;
-    height: 4px;
-    background: var(--border);
-    border-radius: 2px;
-    max-width: 60px;
-    overflow: hidden;
-  }
-
-  .bar-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--accent), var(--accent2));
-    border-radius: 2px;
-    transition: width 0.4s ease;
-  }
-
-  /* Charts section */
-  .chart-area {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 20px;
-  }
-
-  .chart-title {
-    font-family: 'Syne', sans-serif;
-    font-size: 13px;
-    font-weight: 700;
-    margin-bottom: 16px;
-    color: var(--text2);
-  }
-
-  .bar-chart {
-    display: flex;
-    align-items: flex-end;
-    gap: 6px;
-    height: 140px;
-    padding-bottom: 24px;
-    position: relative;
-  }
-
-  .bar-chart::after {
-    content: '';
-    position: absolute;
-    bottom: 24px;
-    left: 0; right: 0;
-    height: 1px;
-    background: var(--border);
-  }
-
-  .chart-bar-wrap {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    min-width: 30px;
-  }
-
-  .chart-bar {
-    width: 100%;
-    border-radius: 4px 4px 0 0;
-    background: linear-gradient(180deg, var(--accent2), var(--accent));
-    transition: height 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-    position: relative;
-    cursor: pointer;
-  }
-
-  .chart-bar:hover { filter: brightness(1.2); }
-
-  .chart-bar-label {
-    font-size: 9px;
-    color: var(--text3);
-    text-align: center;
-    word-break: break-word;
-    max-width: 50px;
-    position: absolute;
-    bottom: -20px;
-    left: 50%;
-    transform: translateX(-50%);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    width: 50px;
-  }
-
-  .chart-val {
-    font-size: 9px;
-    color: var(--text2);
-    font-variant-numeric: tabular-nums;
-  }
-
-  /* Raw data table */
-  .raw-table-wrap {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: auto;
-    max-height: 300px;
-  }
-
-  .raw-table {
-    border-collapse: collapse;
-    font-size: 11px;
-    min-width: 100%;
-  }
-
-  .raw-table th {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    padding: 6px 12px;
-    font-family: 'Syne', sans-serif;
-    font-size: 10px;
-    font-weight: 700;
-    color: var(--text3);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    position: sticky;
-    top: 0;
-    white-space: nowrap;
-  }
-
-  .raw-table td {
-    border: 1px solid var(--border);
-    padding: 5px 12px;
-    color: var(--text2);
-    white-space: nowrap;
-  }
-
-  .raw-table tr:hover td { background: var(--surface2); }
-  .raw-table tr:nth-child(even) td { background: rgba(255,255,255,0.01); }
-
-  /* Scrollbar */
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
-
-  /* Notification */
-  .notification {
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    background: var(--surface2);
-    border: 1px solid var(--green);
-    border-radius: 8px;
-    padding: 10px 16px;
-    font-size: 12px;
-    color: var(--green);
-    z-index: 999;
-    animation: slideIn 0.3s ease;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  @keyframes slideIn {
-    from { transform: translateX(100%); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
-  }
-
-  .empty-state {
-    text-align: center;
-    padding: 40px;
-    color: var(--text3);
-    font-size: 12px;
-  }
-
-  .empty-state-icon { font-size: 28px; margin-bottom: 10px; }
-
-  /* Filter bar */
-  .filter-bar {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-
-  .filter-input {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 5px 10px;
-    color: var(--text);
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    outline: none;
-    min-width: 140px;
-  }
-
-  .filter-input:focus { border-color: var(--accent); }
-
-  .view-tabs {
-    display: flex;
-    gap: 2px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 3px;
-  }
-
-  .view-tab {
-    padding: 4px 12px;
-    border-radius: 4px;
-    font-size: 11px;
-    cursor: pointer;
-    color: var(--text2);
-    transition: all 0.15s;
-    border: none;
-    background: none;
-    font-family: 'DM Mono', monospace;
-  }
-
-  .view-tab.active {
-    background: var(--accent);
-    color: white;
-  }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pregnancy Anemia Prevention App</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel for in-browser JSX compilation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@400;500;700;900&display=swap');
+        
+        * {
+            font-family: 'Noto Sans Lao', sans-serif !important;
+        }
+        
+        body {
+            background-color: #f8fafc;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 24px); }
+        .animate-fade-in { animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        @keyframes fadeIn { 
+            from { opacity: 0; transform: translateY(10px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+        /* Custom scrollbar for better desktop experience */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
 </head>
 <body>
-<div class="app">
-  <header>
-    <div class="logo">
-      <div class="logo-icon">⬡</div>
-      DataPivot
-    </div>
-    <span class="badge">Excel Analysis Studio</span>
-    <div class="header-divider"></div>
-    <span class="badge" id="filenameBadge">No file loaded</span>
-  </header>
+    <div id="root"></div>
 
-  <div class="main">
-    <!-- Sidebar -->
-    <aside class="sidebar">
-      <!-- Import -->
-      <div class="sidebar-section">
-        <div class="sidebar-title">Import Data</div>
-        <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
-          <div class="drop-zone-icon">📊</div>
-          <div class="drop-zone-text">
-            <strong>Click or Drop Excel File</strong>
-            .xlsx, .xls, .csv supported
-          </div>
-        </div>
-        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
-      </div>
+    <script type="text/babel">
+        const { useState, useEffect } = React;
 
-      <!-- Sheets -->
-      <div class="sidebar-section" id="sheetsSection" style="display:none">
-        <div class="sidebar-title">Sheets</div>
-        <div class="sheet-selector" id="sheetSelector"></div>
-      </div>
+        // --- Custom Icons ---
+        const iconPaths = {
+            HeartPulse: '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27"/>',
+            Apple: '<path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 2-1-.56-2.78-2-5-2a4.9 4.9 0 0 0-5 4.78C2 14 5 22 8 22c1.25 0 2.5-1.06 4-1.06Z"/><path d="M10 2c1 .5 2 2 2 5"/>',
+            Pill: '<path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/>',
+            CalendarCheck: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="m9 16 2 2 4-4"/>',
+            AlertCircle: '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
+            Baby: '<circle cx="12" cy="5" r="3"/><path d="M16 11v-1a4 4 0 0 0-8 0v1"/><path d="M8 15h8"/><path d="M10 22v-7"/><path d="M14 22v-7"/><path d="M20 18v-5"/><path d="M4 18v-5"/>',
+            UserPlus: '<path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/>',
+            Coffee: '<path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" y1="2" x2="6" y2="4"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="14" y1="2" x2="14" y2="4"/>',
+            CheckCircle2: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+            XCircle: '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>',
+            Info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+            Clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+            Save: '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>',
+            Activity: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
+            ThumbsUp: '<path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88Z"/>',
+            BarChart3: '<path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>',
+            Globe2: '<path d="M22 12A10 10 0 1 1 12 2a10 10 0 0 1 10 10z"/><path d="M12 22A10 10 0 1 1 12 2a10 10 0 0 1 0 20z"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
+            MessageSquare: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+            HelpCircle: '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+            Send: '<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>',
+            Trash2: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>',
+            User: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'
+        };
 
-      <!-- Fields -->
-      <div class="sidebar-section" id="fieldsSection" style="display:none">
-        <div class="sidebar-title">Fields</div>
-        <div class="field-list" id="fieldList"></div>
-      </div>
+        const Icon = ({ name, size = 24, className = "" }) => {
+            if(!iconPaths[name]) return null;
+            return (
+                <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} dangerouslySetInnerHTML={{ __html: iconPaths[name] }} />
+            );
+        };
 
-      <!-- Pivot Configuration -->
-      <div class="sidebar-section" id="pivotConfig" style="display:none">
-        <div class="sidebar-title">Pivot Configuration</div>
-        <div class="pivot-zones">
-          <div class="pivot-zone" id="zone-rows" data-zone="rows">
-            <div class="pivot-zone-label"><span class="pz-icon">↕</span> Rows</div>
-            <div class="zone-chips" id="chips-rows"></div>
-          </div>
-          <div class="pivot-zone" id="zone-cols" data-zone="cols">
-            <div class="pivot-zone-label"><span class="pz-icon">↔</span> Columns</div>
-            <div class="zone-chips" id="chips-cols"></div>
-          </div>
-          <div class="pivot-zone" id="zone-values" data-zone="values">
-            <div class="pivot-zone-label"><span class="pz-icon">Σ</span> Values</div>
-            <div class="zone-chips" id="chips-values"></div>
-          </div>
-          <div class="pivot-zone" id="zone-filters" data-zone="filters">
-            <div class="pivot-zone-label"><span class="pz-icon">⊟</span> Filters</div>
-            <div class="zone-chips" id="chips-filters"></div>
-          </div>
-        </div>
-      </div>
+        // --- ວັດຈະນານຸກົມແປພາສາ (Translation Dictionary) ---
+        const TRANSLATIONS = {
+            lo: {
+                title: "ປ້ອງກັນເລືອດຈາງໃນແມ່ຍິງຖືພາ", desc: "ການດູແລສຸຂະພາບແມ່ແລະເດັກ (Maternal & Child Health Care)",
+                tab_info: "ຂໍ້ມູນ", tab_food: "ອາຫານ", tab_meds: "ການກິນຢາ", tab_tracker: "ບັນທຶກ", tab_report: "ລາຍງານ", tab_qna: "ຖາມ-ຕອບ",
+                
+                // Welcome
+                welcome_title: "ຍິນດີຕ້ອນຮັບສູ່ແອັບ", welcome_sub: "ກະລຸນາປ້ອນຂໍ້ມູນເພື່ອເຂົ້າໃຊ້ງານ",
+                enter_name: "ຊື່ຂອງທ່ານ", enter_age: "ອາຍຸ", start_btn: "ເຂົ້າສູ່ລະບົບ",
+                req_name_age: "ກະລຸນາປ້ອນຊື່ ແລະ ອາຍຸໃຫ້ຄົບຖ້ວນ!",
+                greeting: "ສະບາຍດີ", age_text: "ປີ",
 
-      <!-- Aggregation -->
-      <div class="sidebar-section" id="aggSection" style="display:none">
-        <div class="sidebar-title">Aggregation</div>
-        <select class="agg-select" id="aggSelect">
-          <option value="sum">Σ Sum</option>
-          <option value="count">⊞ Count</option>
-          <option value="avg">∅ Average</option>
-          <option value="min">↓ Min</option>
-          <option value="max">↑ Max</option>
-          <option value="countd">◈ Count Distinct</option>
-        </select>
-      </div>
-    </aside>
+                // Info
+                what_is_anemia: "ພາວະເລືອດຈາງຈາກການຂາດທາດເຫຼັກແມ່ນຫຍັງ?",
+                anemia_desc: "ພາວະທີ່ຮ່າງກາຍຂາດທາດເຫຼັກ ເກີດຈາກຮ່າງກາຍໄດ້ຮັບທາດເຫຼັກຈາກອາຫານບໍ່ພຽງພໍທີ່ຈະນຳໄປສ້າງເມັດເລືອດແດງ ເຮັດໃຫ້ຮ່າງກາຍມີຈຳນວນເມັດເລືອດແດງຕ່ຳກວ່າປົກກະຕິ ສົ່ງຜົນໃຫ້ການນຳອອກຊີເຈນໄປລ້ຽງສ່ວນຕ່າງໆຂອງຮ່າງກາຍບໍ່ພຽງພໍ.",
+                symptoms: "ອາການຂອງພາວະເລືອດຈາງ",
+                symptoms_note: "*ຖ້າມີພາວະເລືອດຈາງເລັກນ້ອຍຈະບໍ່ມີອາການໃດໆ",
+                symp_list: ["ວິນຫົວ", "ຝ່າມືຈືດ", "ເຍື່ອບຸຕາຈືດ", "ຫາຍໃຈລຳບາກ", "ເມື່ອຍງ່າຍ", "ຫາຍໃຈບໍ່ອີ່ມ"],
+                effects: "ຜົນກະທົບຂອງພາວະເລືອດຈາງ",
+                eff_mom: "ຕໍ່ມານດາ (ແມ່)",
+                eff_mom_list: ["ສ່ຽງຕໍ່ພາວະເກີດກ່ອນກຳນົດ", "ພາວະຄັນເປັນພິດ", "ພາວະຕົກເລືອດຫຼັງເກີດ", "ການຕິດເຊື້ອລະຫວ່າງຖືພາ"],
+                eff_baby: "ຕໍ່ທາລົກ (ເດັກ)",
+                eff_baby_list: ["ເຕີບໃຫຍ່ຊ້າ", "ເກີດກ່ອນກຳນົດ", "ນ້ຳໜັກເດັກເກີດໃໝ່ໜ້ອຍ", "ເດັກເກີດໃໝ່ມີພາວະເລືອດຈາງ"],
+                
+                // Food
+                food_title: "ອາຫານທີ່ມີທາດເຫຼັກສູງ", food_sub: "ກິນອາຫານທີ່ມີປະໂຫຍດເພື່ອສຸຂະພາບທີ່ດີ",
+                meat_title: "ທາດເຫຼັກໃນຊີ້ນສັດ", meat_list: ['ຊີ້ນໝູ', 'ຊີ້ນງົວ', 'ຕັບໝູ', 'ຊີ້ນໄກ່', 'ຕັບໄກ່', 'ເລືອດ (ເຮັດໃຫ້ສຸກ)', 'ປາຄໍ່', 'ຫອຍຈຸບ', 'ໄຂ່ (ຕົ້ມກິນມີປະໂຫຍດສູງ)'],
+                veg_title: "ທາດເຫຼັກໃນຜັກ", veg_list: ['ຍອດໝາກລະ', 'ຜັກຕຳນິນ', 'ໝາກແຄ້ງ', 'ຜັກບົ້ງແດງ', 'ຜັກກະເດົາ', 'ຫົວເຜືອກ'],
+                absorb_title: "ອາຫານທີ່ຊ່ວຍດູດຊຶມທາດເຫຼັກ", absorb_list: ['ຜັກຫອມປ້ອມ', 'ດອກກະລ່ຳ', 'ຜັກຄະນ້າ', 'ຜັກຕິ້ວ', 'ໃບຢ່ານາງ', 'ໝາກເຂືອຂື່ນ', 'ໝາກສີດາ', 'ໝາກຂາມປ້ອມ', 'ໝາກລຳມຸດ', 'ໝາກມີ້', 'ໝາກຮຸ່ງສຸກ', 'ກ້ວຍໄຂ່'],
+                
+                // Meds
+                meds_title: "ຢາເສີມທາດເຫຼັກ", meds_dose: "ກິນ 1 ເມັດ ຕອນເຊົ້າ ແລະ 1 ເມັດ ຕອນແລງ",
+                meds_how: "ວິທີຮັບປະທານທີ່ຖືກຕ້ອງ", meds_how_desc: "ໃຫ້ຮັບປະທານຢາເສີມທາດເຫຼັກຮ່ວມກັບວິຕາມິນຊີເພື່ອຊ່ວຍໃນການດູດຊຶມ ຫຼື ກິນຮ່ວມກັບໝາກໄມ້ທີ່ມີລົດສົ້ມ",
+                meds_avoid: "ຫ້າມຮັບປະທານຮ່ວມກັບ", meds_avoid_desc: "ການຊຽມ, ນົມ, ຊາ, ກາແຟ ແລະ ເບຍ/ເຫຼົ້າ ເພາະຈະໄປຂັດຂວາງການດູດຊຶມ", meds_avoid_note: "ຖ້າຈະດື່ມນົມ ຫຼື ຮັບປະທານຢາການຊຽມ ຄວນເວັ້ນໄລຍະຫ່າງຢ່າງໜ້ອຍ 2 ຊົ່ວໂມງ",
+                meds_side: "ອາການຂ້າງຄຽງ & ວິທີແກ້ໄຂ", meds_side_list: ["ລະຄາຍເຄືອງກະເພາະອາຫານ", "ປວດຮາກ ປວດທ້ອງ", "ຖອກທ້ອງ ຫຼື ທ້ອງຜູກ"], meds_side_sol: "ວິທີແກ້ໄຂ: ໃຫ້ຮັບປະທານຫຼັງອາຫານ 30 ນາທີ",
+                
+                // Tracker
+                track_title: "ແບບບັນທຶກການກິນຢາເສີມທາດເຫຼັກ", track_sub: "ຕິດຕາມການກິນຢາປະຈຳວັນ",
+                track_new: "ບັນທຶກໃໝ່", track_date: "ວັນທີ", track_time: "ເວລາ",
+                time_m: "ເຊົ້າ", time_a: "ສວາຍ", time_e: "ແລງ",
+                track_note: "ໝາຍເຫດ (ມີການກິນຮ່ວມກັບຊາ ກາແຟ ນົມ ຫຼືບໍ່?)", track_note_ph: "ເຊັ່ນ: ບໍ່ໄດ້ກິນຮ່ວມ, ຫຼື ກິນກັບນົມ...",
+                track_save: "ບັນທຶກ", track_hist: "ປະຫວັດການກິນ", track_empty: "ຍັງບໍ່ມີຂໍ້ມູນການບັນທຶກ", track_no_conflict: "ບໍ່ມີໝາຍເຫດ",
+                alert_save: "ບັນທຶກຂໍ້ມູນສຳເລັດແລ້ວ!", alert_date: "ກະລຸນາເລືອກວັນທີ",
+                
+                // Report
+                rep_title: "ລາຍງານການເຂົ້າຊົມ", rep_sub: "ສະຖິຕິການໃຊ້ງານ",
+                rep_likes: "ຈຳນວນຄົນກົດໄລ", rep_views: "ຍອດເຂົ້າຊົມທັງໝົດ", rep_stat: "ສະຖິຕິການເຂົ້າເບິ່ງແຕ່ລະໜ້າ", rep_times: "ຄັ້ງ",
+                clear_data: "ລ້າງຂໍ້ມູນທັງໝົດ (Clear Data)", clear_prompt: "ກະລຸນາປ້ອນລະຫັດຜ່ານເພື່ອລ້າງຂໍ້ມູນ:", clear_success: "ລ້າງຂໍ້ມູນສຳເລັດແລ້ວ!", clear_fail: "ລະຫັດຜ່ານບໍ່ຖືກຕ້ອງ!",
+                
+                // Q&A and Feedback
+                faq_title: "ຄຳຖາມທີ່ພົບເລື້ອຍ (FAQ)",
+                faq_1_q: "ຖ້າລືມກິນຢາຕ້ອງເຮັດແນວໃດ?",
+                faq_1_a: "ໃຫ້ກິນທັນທີທີ່ນຶກໄດ້, ແຕ່ຖ້າໃກ້ຮອດຄາບຕໍ່ໄປ ໃຫ້ຂ້າມໄປກິນຄາບຕໍ່ໄປເລີຍ (ຫ້າມກິນພ້ອມກັນ 2 ເມັດ).",
+                faq_2_q: "ກິນຢາແລ້ວອຸດຈາລະເປັນສີດຳ ອັນຕະລາຍບໍ່?",
+                faq_2_a: "ບໍ່ອັນຕະລາຍ, ເປັນອາການປົກກະຕິທີ່ພົບໄດ້ຈາກການກິນຢາເສີມທາດເຫຼັກ.",
+                fb_title: "ສົ່ງຄຳຕິຊົມ (Feedback)",
+                fb_ph: "ພິມຂໍ້ຄວາມຂອງທ່ານທີ່ນີ້...",
+                fb_submit: "ສົ່ງຂໍ້ຄວາມ",
+                fb_alert: "ຂອບໃຈສຳລັບຄຳຕິຊົມຂອງທ່ານ!",
 
-    <!-- Content -->
-    <div class="content">
-      <!-- Toolbar -->
-      <div class="toolbar" id="toolbar" style="display:none">
-        <div class="view-tabs">
-          <button class="view-tab active" onclick="setView('pivot')">Pivot</button>
-          <button class="view-tab" onclick="setView('chart')">Chart</button>
-          <button class="view-tab" onclick="setView('raw')">Raw Data</button>
-        </div>
-        <div class="toolbar-sep"></div>
-        <input type="text" class="filter-input" id="filterInput" placeholder="🔍 Search values..." oninput="applyFilter()">
-        <div class="toolbar-sep"></div>
-        <button class="toolbar-btn primary" onclick="buildPivot()">▶ Build Pivot</button>
-        <button class="toolbar-btn" onclick="clearPivot()">✕ Clear</button>
-        <button class="toolbar-btn" onclick="exportCSV()">⬇ Export CSV</button>
-        <div class="toolbar-spacer"></div>
-        <div class="stat-pill">Rows: <span class="val" id="rowCount">0</span></div>
-        <div class="stat-pill">Cols: <span class="val" id="colCount">0</span></div>
-      </div>
+                creator: "ສ້າງໂດຍ: ລຳພູ ຜອນມະລີ | ໂທ: 85620 22511233"
+            },
+            th: {
+                title: "ป้องกันโลหิตจางในครรภ์", desc: "การดูแลสุขภาพแม่และเด็ก",
+                tab_info: "ข้อมูล", tab_food: "อาหาร", tab_meds: "การกินยา", tab_tracker: "บันทึก", tab_report: "รายงาน", tab_qna: "ถาม-ตอบ",
+                
+                welcome_title: "ยินดีต้อนรับเข้าสู่แอป", welcome_sub: "กรุณากรอกข้อมูลเพื่อเข้าใช้งาน",
+                enter_name: "ชื่อของคุณ", enter_age: "อายุ", start_btn: "เข้าสู่ระบบ",
+                req_name_age: "กรุณากรอกชื่อและอายุให้ครบถ้วน!",
+                greeting: "สวัสดี", age_text: "ปี",
 
-      <!-- Pivot area -->
-      <div class="pivot-area" id="pivotArea">
-        <div class="welcome">
-          <div class="welcome-icon">📊</div>
-          <h2>Excel Pivot Analysis</h2>
-          <p>Import any Excel or CSV file and instantly build interactive pivot tables with drag-and-drop fields.</p>
-          <div class="welcome-steps">
-            <div class="step">
-              <div class="step-num">1</div>
-              Drop an Excel file in the sidebar
-            </div>
-            <div class="step">
-              <div class="step-num">2</div>
-              Drag fields into Rows, Cols & Values
-            </div>
-            <div class="step">
-              <div class="step-num">3</div>
-              Click Build Pivot to analyze
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
+                what_is_anemia: "ภาวะโลหิตจางจากการขาดธาตุเหล็กคืออะไร?",
+                anemia_desc: "ภาวะที่ร่างกายขาดธาตุเหล็ก เกิดจากร่างกายได้รับธาตุเหล็กจากอาหารไม่เพียงพอที่จะนำไปสร้างเม็ดเลือดแดง ทำให้ร่างกายมีจำนวนเม็ดเลือดแดงต่ำกว่าปกติ ส่งผลให้การนำออกซิเจนไปเลี้ยงส่วนต่างๆ ของร่างกายไม่เพียงพอ",
+                symptoms: "อาการของภาวะโลหิตจาง",
+                symptoms_note: "*ถ้ามีภาวะโลหิตจางเล็กน้อยจะไม่มีอาการใดๆ",
+                symp_list: ["อาการเวียนศีรษะ", "ฝ่ามือซีดจาง", "เยื่อบุตาซีดจาง", "หายใจลำบาก", "เหนื่อยง่าย", "หายใจไม่อิ่มขณะนั่งพัก"],
+                effects: "ผลกระทบของภาวะโลหิตจาง",
+                eff_mom: "ต่อมารดา",
+                eff_mom_list: ["เสี่ยงต่อภาวะคลอดก่อนกำหนด", "ภาวะครรภ์เป็นพิษ", "ภาวะตกเลือดหลังคลอด", "การติดเชื้อในระหว่างตั้งครรภ์"],
+                eff_baby: "ต่อทารก",
+                eff_baby_list: ["เจริญเติบโตช้า", "คลอดก่อนกำหนด", "น้ำหนักทารกแรกเกิดน้อย", "ทารกแรกเกิดมีภาวะโลหิตจาง"],
+                
+                food_title: "อาหารที่มีธาตุเหล็กสูง", food_sub: "ทานอาหารที่มีประโยชน์เพื่อสุขภาพ",
+                meat_title: "ธาตุเหล็กในเนื้อสัตว์", meat_list: ['เนื้อหมู', 'เนื้อวัว', 'ตับหมู', 'เนื้อไก่', 'ตับไก่', 'เลือด (ทำให้สุกอย่างทั่วถึง)', 'ปลาช่อน', 'หอยขม', 'กลุ่มไข่ (ต้มกินจะมีประโยชน์สูง)'],
+                veg_title: "ธาตุเหล็กในผัก", veg_list: ['ยอดมะระ', 'ผักตำลึง', 'มะเขือพวง', 'ผักบุ้งแดง', 'สะเดา', 'หัวเผือก'],
+                absorb_title: "อาหารที่ช่วยในการดูดซึมธาตุเหล็ก", absorb_list: ['ผักชี', 'ดอกกะหล่ำ', 'ผักคะน้า', 'ผักติ้ว', 'ใบย่านาง', 'มะเขือขื่น', 'ฝรั่ง', 'มะขามป้อม', 'ละมุด', 'ขนุน', 'มะละกอสุก', 'กล้วยไข่'],
+                
+                meds_title: "ยาเสริมธาตุเหล็ก", meds_dose: "กิน 1 เม็ด ตอนเช้า และ 1 เม็ด ตอนเย็น",
+                meds_how: "วิธีรับประทานที่ถูกต้อง", meds_how_desc: "ให้รับประทานยาเสริมธาตุเหล็กร่วมกับวิตามินซีเพื่อช่วยในการดูดซึม หรือรับประทานร่วมกับผลไม้ที่มีรสเปรี้ยว",
+                meds_avoid: "ห้ามรับประทานร่วมกับ", meds_avoid_desc: "แคลเซียม นม ชา กาแฟ และเบียร์/แอลกอฮอล์ เพราะจะไปขัดขวางการดูดซึม", meds_avoid_note: "หากจะดื่มนมหรือรับประทานยาแคลเซียม ควรเว้นระยะห่างอย่างน้อย 2 ชั่วโมง",
+                meds_side: "อาการข้างเคียง & วิธีแก้ไข", meds_side_list: ["ระคายเคืองกระเพาะอาหาร", "คลื่นไส้ อาเจียน ปวดท้อง", "ท้องเสีย หรือ ท้องผูก"], meds_side_sol: "วิธีแก้ไข: ให้รับประทานหลังอาหาร 30 นาที",
+                
+                track_title: "แบบบันทึกการกินยาเสริมธาตุเหล็ก", track_sub: "ติดตามการกินยาประจำวัน",
+                track_new: "บันทึกใหม่", track_date: "วันที่", track_time: "เวลา",
+                time_m: "เช้า", time_a: "กลางวัน", time_e: "เย็น",
+                track_note: "หมายเหตุ (มีการกินร่วมกับชา กาแฟ นม หรือไม่?)", track_note_ph: "เช่น: ไม่ได้กินร่วม, หรือ กินกับนม...",
+                track_save: "บันทึก", track_hist: "ประวัติการกิน", track_empty: "ยังไม่มีข้อมูลการบันทึก", track_no_conflict: "ไม่มีหมายเหตุ",
+                alert_save: "บันทึกข้อมูลสำเร็จ!", alert_date: "กรุณาเลือกวันที่",
+                
+                rep_title: "รายงานการเข้าชม", rep_sub: "สถิติการใช้งาน",
+                rep_likes: "จำนวนคนกดไลก์", rep_views: "ยอดเข้าชมทั้งหมด", rep_stat: "สถิติการเข้าดูแต่ละหน้า", rep_times: "ครั้ง",
+                clear_data: "ล้างข้อมูลทั้งหมด (Clear Data)", clear_prompt: "กรุณากรอกรหัสผ่านเพื่อล้างข้อมูล:", clear_success: "ล้างข้อมูลสำเร็จ!", clear_fail: "รหัสผ่านไม่ถูกต้อง!",
+                
+                faq_title: "คำถามที่พบบ่อย (FAQ)",
+                faq_1_q: "ถ้าลืมกินยาต้องทำอย่างไร?",
+                faq_1_a: "ให้กินทันทีที่นึกได้ แต่ถ้าใกล้ถึงมื้อถัดไป ให้ข้ามไปกินมื้อถัดไปเลย (ห้ามกินพร้อมกัน 2 เม็ด)",
+                faq_2_q: "กินยาแล้วอุจจาระเป็นสีดำ อันตรายไหม?",
+                faq_2_a: "ไม่อันตราย เป็นอาการปกติที่พบได้จากการกินยาเสริมธาตุเหล็ก",
+                fb_title: "ส่งคำติชม (Feedback)",
+                fb_ph: "พิมพ์ข้อความของคุณที่นี่...",
+                fb_submit: "ส่งข้อความ",
+                fb_alert: "ขอบคุณสำหรับคำติชมของคุณ!",
 
-<script>
-let workbook = null;
-let currentSheet = null;
-let rawData = [];
-let headers = [];
-let fieldTypes = {};
-let pivotConfig = { rows: [], cols: [], values: [], filters: [] };
-let currentView = 'pivot';
-let filterText = '';
-let pivotResult = null;
+                creator: "สร้างโดย: ลำพู ผอนมะลี | โทร: 85620 22511233"
+            },
+            en: {
+                title: "Pregnancy Anemia Prevention", desc: "Maternal & Child Health Care",
+                tab_info: "Info", tab_food: "Food", tab_meds: "Meds", tab_tracker: "Tracker", tab_report: "Report", tab_qna: "Q&A",
+                
+                welcome_title: "Welcome to the App", welcome_sub: "Please enter your info to start",
+                enter_name: "Your Name", enter_age: "Age", start_btn: "Start",
+                req_name_age: "Please enter both name and age!",
+                greeting: "Hello", age_text: "yrs",
 
-// ---------- FILE LOADING ----------
+                what_is_anemia: "What is Iron Deficiency Anemia?",
+                anemia_desc: "A condition where the body lacks iron, resulting from insufficient iron intake to produce enough red blood cells. This leads to inadequate oxygen delivery to body parts.",
+                symptoms: "Symptoms of Anemia",
+                symptoms_note: "*Mild anemia may not show any symptoms.",
+                symp_list: ["Dizziness", "Pale palms", "Pale conjunctiva", "Shortness of breath", "Easily fatigued", "Breathlessness at rest"],
+                effects: "Effects of Anemia",
+                eff_mom: "On Mother",
+                eff_mom_list: ["Risk of premature birth", "Preeclampsia", "Postpartum hemorrhage", "Infections during pregnancy"],
+                eff_baby: "On Baby",
+                eff_baby_list: ["Slow growth", "Premature birth", "Low birth weight", "Newborn anemia"],
+                
+                food_title: "High Iron Foods", food_sub: "Eat healthy food to live healthy",
+                meat_title: "Iron in Meats", meat_list: ['Pork', 'Beef', 'Pork liver', 'Chicken', 'Chicken liver', 'Blood (Cook thoroughly)', 'Snakehead fish', 'Snails', 'Eggs (Boiled is highly beneficial)'],
+                veg_title: "Iron in Vegetables", veg_list: ['Bitter gourd leaves', 'Ivy gourd', 'Turkey berry', 'Red morning glory', 'Neem', 'Taro'],
+                absorb_title: "Iron Absorption Boosters", absorb_list: ['Coriander', 'Cauliflower', 'Kale', 'Cratoxylum formosum', 'Yanang', 'Yellow eggplant', 'Guava', 'Indian gooseberry', 'Sapodilla', 'Jackfruit', 'Ripe papaya', 'Lady finger banana'],
+                
+                meds_title: "Iron Supplements", meds_dose: "Take 1 pill in the morning, 1 in the evening",
+                meds_how: "Proper Intake Method", meds_how_desc: "Take iron supplements with Vitamin C or sour fruits to boost absorption.",
+                meds_avoid: "Do not take with", meds_avoid_desc: "Calcium, Milk, Tea, Coffee, and Alcohol as they inhibit absorption.", meds_avoid_note: "If drinking milk or taking calcium, wait at least 2 hours.",
+                meds_side: "Side Effects & Solutions", meds_side_list: ["Stomach irritation", "Nausea, Vomiting, Stomachache", "Diarrhea or Constipation"], meds_side_sol: "Solution: Take 30 minutes after meals.",
+                
+                track_title: "Iron Supplement Tracker", track_sub: "Daily Intake Log",
+                track_new: "New Entry", track_date: "Date", track_time: "Time",
+                time_m: "Morning", time_a: "Afternoon", time_e: "Evening",
+                track_note: "Notes (Taken with tea, coffee, milk?)", track_note_ph: "E.g., No conflict, or taken with milk...",
+                track_save: "Save", track_hist: "Intake History", track_empty: "No records yet.", track_no_conflict: "No notes",
+                alert_save: "Data saved successfully!", alert_date: "Please select a date.",
+                
+                rep_title: "Analytics Report", rep_sub: "Usage Statistics",
+                rep_likes: "Total Likes", rep_views: "Total Views", rep_stat: "Page View Statistics", rep_times: "Views",
+                clear_data: "Clear All Data", clear_prompt: "Enter password to clear data:", clear_success: "Data cleared successfully!", clear_fail: "Incorrect password!",
+                
+                faq_title: "Frequently Asked Questions",
+                faq_1_q: "What if I forget to take the pill?",
+                faq_1_a: "Take it as soon as you remember. If it's close to the next dose, skip the missed one. Do not double dose.",
+                faq_2_q: "Are black stools normal after taking the pill?",
+                faq_2_a: "Yes, it is a normal and harmless side effect of iron supplements.",
+                fb_title: "Send Feedback",
+                fb_ph: "Type your message here...",
+                fb_submit: "Submit",
+                fb_alert: "Thank you for your feedback!",
 
-document.getElementById('fileInput').addEventListener('change', e => {
-  const file = e.target.files[0];
-  if (file) loadFile(file);
-});
+                creator: "Created by: Lamphou Phonmaly | Tel: 85620 22511233"
+            }
+        };
 
-const dropZone = document.getElementById('dropZone');
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-dropZone.addEventListener('drop', e => {
-  e.preventDefault();
-  dropZone.classList.remove('drag-over');
-  const file = e.dataTransfer.files[0];
-  if (file) loadFile(file);
-});
+        // --- Welcome Screen Component ---
+        function WelcomeScreen({ t, onLogin, lang, setLang }) {
+            const [name, setName] = useState('');
+            const [age, setAge] = useState('');
 
-function loadFile(file) {
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      workbook = XLSX.read(e.target.result, { type: 'binary', cellDates: true });
-      document.getElementById('filenameBadge').textContent = file.name;
-      populateSheets();
-      notify(`✓ Loaded: ${file.name}`);
-    } catch (err) {
-      notify('⚠ Error reading file');
-    }
-  };
-  reader.readAsBinaryString(file);
-}
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (name.trim() && age.trim()) {
+                    onLogin({ name, age });
+                } else {
+                    alert(t('req_name_age'));
+                }
+            };
 
-function populateSheets() {
-  const sel = document.getElementById('sheetSelector');
-  sel.innerHTML = '';
-  workbook.SheetNames.forEach((name, i) => {
-    const btn = document.createElement('button');
-    btn.className = 'sheet-btn' + (i === 0 ? ' active' : '');
-    btn.textContent = name;
-    btn.onclick = () => {
-      document.querySelectorAll('.sheet-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      loadSheet(name);
-    };
-    sel.appendChild(btn);
-  });
-  document.getElementById('sheetsSection').style.display = 'block';
-  loadSheet(workbook.SheetNames[0]);
-}
+            return (
+                <div className="min-h-screen bg-rose-50 flex items-center justify-center p-4">
+                    <div className="w-full max-w-md bg-white rounded-3xl shadow-xl overflow-hidden animate-fade-in">
+                        <div className="bg-rose-500 p-8 text-center text-white relative">
+                            <div className="absolute top-4 right-4 flex gap-1 bg-black/10 p-1 rounded-xl">
+                                <button onClick={() => setLang('lo')} className={`text-xs px-2 py-1 rounded-lg ${lang === 'lo' ? 'bg-white text-rose-600 font-bold' : 'hover:bg-black/10'}`}>LA</button>
+                                <button onClick={() => setLang('th')} className={`text-xs px-2 py-1 rounded-lg ${lang === 'th' ? 'bg-white text-rose-600 font-bold' : 'hover:bg-black/10'}`}>TH</button>
+                                <button onClick={() => setLang('en')} className={`text-xs px-2 py-1 rounded-lg ${lang === 'en' ? 'bg-white text-rose-600 font-bold' : 'hover:bg-black/10'}`}>EN</button>
+                            </div>
+                            <div className="bg-white/20 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-sm">
+                                <Icon name="HeartPulse" size={40} className="text-white" />
+                            </div>
+                            <h1 className="text-2xl font-bold mb-2">{t('welcome_title')}</h1>
+                            <p className="text-rose-100">{t('welcome_sub')}</p>
+                        </div>
+                        <form onSubmit={handleSubmit} className="p-8 space-y-6">
+                            <div>
+                                <label className="block text-gray-700 font-bold mb-2 flex items-center gap-2">
+                                    <Icon name="User" size={18} className="text-rose-500"/> {t('enter_name')}
+                                </label>
+                                <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full border-2 border-gray-200 rounded-xl p-3 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/20 outline-none transition-all" />
+                            </div>
+                            <div>
+                                <label className="block text-gray-700 font-bold mb-2 flex items-center gap-2">
+                                    <Icon name="Activity" size={18} className="text-rose-500"/> {t('enter_age')}
+                                </label>
+                                <input type="number" value={age} onChange={(e) => setAge(e.target.value)} className="w-full border-2 border-gray-200 rounded-xl p-3 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/20 outline-none transition-all" />
+                            </div>
+                            <button type="submit" className="w-full bg-rose-500 hover:bg-rose-600 text-white font-bold py-4 rounded-xl shadow-lg transition-all active:scale-95 text-lg">
+                                {t('start_btn')}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
 
-function loadSheet(name) {
-  currentSheet = name;
-  const ws = workbook.Sheets[name];
-  rawData = XLSX.utils.sheet_to_json(ws, { defval: '', raw: false });
-  if (rawData.length === 0) return;
-  headers = Object.keys(rawData[0]);
-  detectFieldTypes();
-  renderFieldList();
-  resetPivotZones();
-  document.getElementById('fieldsSection').style.display = 'block';
-  document.getElementById('pivotConfig').style.display = 'block';
-  document.getElementById('aggSection').style.display = 'block';
-  document.getElementById('toolbar').style.display = 'flex';
-  document.getElementById('rowCount').textContent = rawData.length;
-  document.getElementById('colCount').textContent = headers.length;
-  showRawData();
-}
+        // --- Main App Component ---
+        function App() {
+            const [user, setUser] = useState(null); // ເກັບຂໍ້ມູນຜູ້ໃຊ້
+            const [lang, setLang] = useState('lo');
+            const [activeTab, setActiveTab] = useState('info');
+            const [logs, setLogs] = useState([]);
+            const [newLog, setNewLog] = useState({ date: '', time: 'time_m', conflict: '' });
 
-function detectFieldTypes() {
-  fieldTypes = {};
-  headers.forEach(h => {
-    let nums = 0, dates = 0, total = Math.min(rawData.length, 50);
-    for (let i = 0; i < total; i++) {
-      const v = rawData[i][h];
-      if (v !== '' && !isNaN(Number(v))) nums++;
-      else if (v instanceof Date || /^\d{4}-\d{2}-\d{2}/.test(String(v))) dates++;
-    }
-    if (nums / total > 0.7) fieldTypes[h] = 'num';
-    else if (dates / total > 0.5) fieldTypes[h] = 'date';
-    else fieldTypes[h] = 'str';
-  });
-}
+            const [likes, setLikes] = useState(0);
+            const [tabViews, setTabViews] = useState({ info: 1, food: 0, meds: 0, tracker: 0, report: 0, qna: 0 });
 
-function renderFieldList() {
-  const list = document.getElementById('fieldList');
-  list.innerHTML = '';
-  headers.forEach(h => {
-    const chip = document.createElement('div');
-    chip.className = 'field-chip';
-    chip.draggable = true;
-    chip.dataset.field = h;
+            const t = (key) => TRANSLATIONS[lang][key] || key;
 
-    const typeIcon = { num: 'N', str: 'A', date: 'D' }[fieldTypes[h]] || 'A';
-    const typeClass = { num: 'type-num', str: 'type-str', date: 'type-date' }[fieldTypes[h]] || 'type-str';
+            // ກວດສອບຖ້າຍັງບໍ່ລົງທະບຽນໃຫ້ສະແດງໜ້າ Welcome
+            if (!user) {
+                return <WelcomeScreen t={t} onLogin={setUser} lang={lang} setLang={setLang} />;
+            }
 
-    chip.innerHTML = `<span class="field-type ${typeClass}">${typeIcon}</span>${h}`;
-    chip.addEventListener('dragstart', e => {
-      e.dataTransfer.setData('field', h);
-      chip.classList.add('dragging');
-    });
-    chip.addEventListener('dragend', () => chip.classList.remove('dragging'));
-    list.appendChild(chip);
-  });
-}
+            const handleTabSwitch = (tab) => {
+                setActiveTab(tab);
+                setTabViews(prev => ({ ...prev, [tab]: prev[tab] + 1 }));
+            };
 
-// ---------- DRAG & DROP ZONES ----------
+            const handleSaveLog = () => {
+                if (newLog.date) {
+                    setLogs([{ id: Date.now(), ...newLog }, ...logs]);
+                    setNewLog({ date: '', time: 'time_m', conflict: '' });
+                    alert(t('alert_save'));
+                } else {
+                    alert(t('alert_date'));
+                }
+            };
 
-['rows', 'cols', 'values', 'filters'].forEach(zone => {
-  const el = document.getElementById(`zone-${zone}`);
-  el.addEventListener('dragover', e => { e.preventDefault(); el.classList.add('drag-target'); });
-  el.addEventListener('dragleave', () => el.classList.remove('drag-target'));
-  el.addEventListener('drop', e => {
-    e.preventDefault();
-    el.classList.remove('drag-target');
-    const field = e.dataTransfer.getData('field');
-    if (field && !pivotConfig[zone].includes(field)) {
-      pivotConfig[zone].push(field);
-      renderZoneChips();
-    }
-  });
-});
+            const handleClearData = () => {
+                const pwd = window.prompt(t('clear_prompt'));
+                if (pwd === 'lp233') {
+                    setLogs([]);
+                    setLikes(0);
+                    setTabViews({ info: 1, food: 0, meds: 0, tracker: 0, report: 0, qna: 0 });
+                    alert(t('clear_success'));
+                } else if (pwd !== null) {
+                    alert(t('clear_fail'));
+                }
+            };
 
-function renderZoneChips() {
-  ['rows', 'cols', 'values', 'filters'].forEach(zone => {
-    const container = document.getElementById(`chips-${zone}`);
-    container.innerHTML = '';
-    pivotConfig[zone].forEach(field => {
-      const chip = document.createElement('div');
-      chip.className = 'zone-chip';
-      chip.innerHTML = `${field}<span class="remove-btn" onclick="removeField('${zone}','${field}')">×</span>`;
-      container.appendChild(chip);
-    });
-  });
-}
+            const renderContent = () => {
+                switch (activeTab) {
+                    case 'info': return <InfoSection t={t} />;
+                    case 'food': return <FoodSection t={t} />;
+                    case 'meds': return <MedsSection t={t} />;
+                    case 'tracker': return <TrackerSection t={t} logs={logs} newLog={newLog} setNewLog={setNewLog} handleSaveLog={handleSaveLog} />;
+                    case 'report': return <ReportSection t={t} tabViews={tabViews} likes={likes} onClearData={handleClearData} />;
+                    case 'qna': return <QnaSection t={t} />;
+                    default: return <InfoSection t={t} />;
+                }
+            };
 
-function removeField(zone, field) {
-  pivotConfig[zone] = pivotConfig[zone].filter(f => f !== field);
-  renderZoneChips();
-}
+            return (
+                <div className="min-h-screen w-full flex flex-col font-sans">
+                    
+                    {/* Header - Full Width */}
+                    <header className="bg-rose-500 text-white p-4 md:py-5 md:px-8 shadow-md z-10">
+                        <div className="max-w-7xl mx-auto w-full flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div className="flex items-center gap-4">
+                                <div className="bg-white p-3 rounded-full shadow-sm text-rose-500 hidden md:block">
+                                    <Icon name="HeartPulse" size={32} />
+                                </div>
+                                <div>
+                                    <h1 className="text-xl md:text-2xl font-bold leading-tight">{t('title')}</h1>
+                                    <p className="text-sm text-rose-100 mt-1">
+                                        {t('greeting')}, {user.name} ({user.age} {t('age_text')})
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            {/* Action Bar */}
+                            <div className="flex items-center justify-between md:justify-end gap-3 md:gap-4">
+                                <div className="flex items-center gap-1 bg-black/10 p-1.5 rounded-xl">
+                                    <Icon name="Globe2" size={20} className="text-rose-100 ml-2 mr-2 hidden md:block" />
+                                    <button onClick={() => setLang('lo')} className={`text-xs md:text-sm px-3 py-1.5 rounded-lg transition-all ${lang === 'lo' ? 'bg-white text-rose-600 font-bold shadow-sm' : 'text-white hover:bg-black/10'}`}>LA</button>
+                                    <button onClick={() => setLang('th')} className={`text-xs md:text-sm px-3 py-1.5 rounded-lg transition-all ${lang === 'th' ? 'bg-white text-rose-600 font-bold shadow-sm' : 'text-white hover:bg-black/10'}`}>TH</button>
+                                    <button onClick={() => setLang('en')} className={`text-xs md:text-sm px-3 py-1.5 rounded-lg transition-all ${lang === 'en' ? 'bg-white text-rose-600 font-bold shadow-sm' : 'text-white hover:bg-black/10'}`}>EN</button>
+                                </div>
+                                
+                                <button onClick={() => setLikes(l => l + 1)} className="flex items-center gap-2 bg-white/20 hover:bg-white/30 px-4 py-2 rounded-xl transition-all active:scale-95 shadow-sm">
+                                    <Icon name="ThumbsUp" size={20} />
+                                    <span className="text-sm md:text-base font-bold">{likes}</span>
+                                </button>
+                            </div>
+                        </div>
+                    </header>
 
-function resetPivotZones() {
-  pivotConfig = { rows: [], cols: [], values: [], filters: [] };
-  renderZoneChips();
-  document.getElementById('pivotArea').innerHTML = '';
-  showRawData();
-}
+                    {/* Main Content Area - Centered & Max Width */}
+                    <main className="flex-1 w-full max-w-7xl mx-auto p-4 md:p-8 flex flex-col justify-between">
+                        <div>
+                            {renderContent()}
+                        </div>
+                        
+                        {/* Creator Footer inside Main container */}
+                        <div className="mt-12 mb-24 md:mb-12 text-center text-sm md:text-base text-gray-400 font-medium">
+                            {t('creator')}
+                        </div>
+                    </main>
 
-// ---------- BUILD PIVOT ----------
+                    {/* Bottom Navigation - Fixed Bottom, Max Width Container */}
+                    <nav className="fixed bottom-0 w-full bg-white border-t border-rose-100 shadow-[0_-5px_20px_rgba(0,0,0,0.05)] z-20">
+                        <div className="max-w-7xl mx-auto flex justify-center gap-1 md:gap-8 px-1 md:px-8 p-2 pb-safe overflow-x-auto hide-scrollbar">
+                            <TabButton active={activeTab === 'info'} onClick={() => handleTabSwitch('info')} icon={<Icon name="Info" size={24} />} label={t('tab_info')} />
+                            <TabButton active={activeTab === 'food'} onClick={() => handleTabSwitch('food')} icon={<Icon name="Apple" size={24} />} label={t('tab_food')} />
+                            <TabButton active={activeTab === 'meds'} onClick={() => handleTabSwitch('meds')} icon={<Icon name="Pill" size={24} />} label={t('tab_meds')} />
+                            <TabButton active={activeTab === 'tracker'} onClick={() => handleTabSwitch('tracker')} icon={<Icon name="CalendarCheck" size={24} />} label={t('tab_tracker')} />
+                            <TabButton active={activeTab === 'report'} onClick={() => handleTabSwitch('report')} icon={<Icon name="BarChart3" size={24} />} label={t('tab_report')} />
+                            <TabButton active={activeTab === 'qna'} onClick={() => handleTabSwitch('qna')} icon={<Icon name="MessageSquare" size={24} />} label={t('tab_qna')} />
+                        </div>
+                    </nav>
+                </div>
+            );
+        }
 
-function buildPivot() {
-  const { rows, cols, values } = pivotConfig;
-  const agg = document.getElementById('aggSelect').value;
+        // --- Subcomponents ---
 
-  if (rows.length === 0 && cols.length === 0) {
-    notify('⚠ Add at least one Row or Column field');
-    return;
-  }
-  if (values.length === 0) {
-    notify('⚠ Add at least one Values field');
-    return;
-  }
+        function TabButton({ active, onClick, icon, label }) {
+            return (
+                <button onClick={onClick} className={`flex flex-col items-center justify-center p-2 md:py-3 md:px-6 flex-1 min-w-[70px] max-w-[120px] rounded-xl transition-all ${active ? 'text-rose-600 bg-rose-50 shadow-sm' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'}`}>
+                    <div className={`mb-1.5 ${active ? 'scale-110' : ''} transition-transform`}>
+                        {icon}
+                    </div>
+                    <span className="text-[10px] md:text-sm font-bold whitespace-nowrap">{label}</span>
+                </button>
+            );
+        }
 
-  const data = filterText
-    ? rawData.filter(row => headers.some(h => String(row[h]).toLowerCase().includes(filterText)))
-    : rawData;
+        function InfoSection({ t }) {
+            return (
+                <div className="space-y-8 animate-fade-in">
+                    <div className="grid md:grid-cols-2 gap-6 items-center bg-rose-100/50 p-6 md:p-8 rounded-3xl border border-rose-100">
+                        <div>
+                            <h2 className="text-rose-800 font-bold text-xl md:text-2xl mb-4 flex items-start gap-3 leading-tight">
+                                <Icon name="AlertCircle" size={28} className="text-rose-500 flex-shrink-0 mt-0.5" />
+                                {t('what_is_anemia')}
+                            </h2>
+                            <p className="text-base md:text-lg text-gray-700 leading-relaxed max-w-4xl">
+                                {t('anemia_desc')}
+                            </p>
+                        </div>
+                        {/* ພາບປະກອບພາວະເລືອດຈາງ / ແມ່ຍິງຖືພາ */}
+                        <img src="https://images.unsplash.com/photo-1531983412531-1f49a365ffed?auto=format&fit=crop&q=80&w=800" alt="Pregnancy" className="w-full h-48 md:h-64 object-cover rounded-2xl shadow-sm" />
+                    </div>
 
-  const valueField = values[0];
-  const rowKeys = [...new Set(data.map(r => rows.map(f => r[f]).join(' › ')))].sort();
-  const colKeys = cols.length > 0
-    ? [...new Set(data.map(r => cols.map(f => r[f]).join(' › ')))].sort()
-    : ['Value'];
+                    <div className="grid md:grid-cols-3 gap-6">
+                        <div className="md:col-span-2">
+                            <div className="flex flex-col md:flex-row md:items-end justify-between mb-4">
+                                <h3 className="font-bold text-xl text-gray-800 flex items-center gap-2">
+                                    <Icon name="Activity" size={24} className="text-orange-500" /> {t('symptoms')}
+                                </h3>
+                                <p className="text-sm text-gray-500 italic mt-2 md:mt-0">{t('symptoms_note')}</p>
+                            </div>
+                            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                                {t('symp_list').map((symptom, i) => (
+                                    <div key={i} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-3 transition-transform hover:-translate-y-1">
+                                        <div className="w-3 h-3 rounded-full bg-orange-400 flex-shrink-0"></div>
+                                        <span className="text-sm md:text-base text-gray-700 font-bold">{symptom}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        {/* ພາບປະກອບອາການວິນຫົວ ເມື່ອຍລ້າ */}
+                        <img src="https://images.unsplash.com/photo-1505528636417-646700c2834b?auto=format&fit=crop&q=80&w=800" alt="Dizziness Symptoms" className="w-full h-full min-h-[200px] object-cover rounded-3xl shadow-sm hidden md:block" />
+                    </div>
 
-  // Build cell map
-  const cellMap = {};
-  data.forEach(row => {
-    const rk = rows.map(f => row[f]).join(' › ');
-    const ck = cols.length > 0 ? cols.map(f => row[f]).join(' › ') : 'Value';
-    const key = `${rk}||${ck}`;
-    if (!cellMap[key]) cellMap[key] = [];
-    const v = parseFloat(row[valueField]);
-    if (!isNaN(v)) cellMap[key].push(v);
-    else cellMap[key].push(row[valueField]);
-  });
+                    <div>
+                        <h3 className="font-bold text-xl text-gray-800 mb-4 flex items-center gap-2">
+                            <Icon name="AlertCircle" size={24} className="text-red-500" /> {t('effects')}
+                        </h3>
+                        <div className="grid md:grid-cols-2 gap-6">
+                            <div className="bg-gradient-to-br from-pink-50 to-rose-50 p-6 rounded-3xl border border-pink-100">
+                                <h4 className="font-bold text-lg text-pink-700 flex items-center gap-3 mb-4 border-b border-pink-200 pb-3">
+                                    <Icon name="UserPlus" size={24} /> {t('eff_mom')}
+                                </h4>
+                                <ul className="text-base text-gray-700 space-y-3 list-disc list-inside marker:text-pink-400">
+                                    {t('eff_mom_list').map((eff, i) => <li key={i}>{eff}</li>)}
+                                </ul>
+                            </div>
+                            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 p-6 rounded-3xl border border-blue-100">
+                                <h4 className="font-bold text-lg text-blue-700 flex items-center gap-3 mb-4 border-b border-blue-200 pb-3">
+                                    <Icon name="Baby" size={24} /> {t('eff_baby')}
+                                </h4>
+                                <ul className="text-base text-gray-700 space-y-3 list-disc list-inside marker:text-blue-400">
+                                    {t('eff_baby_list').map((eff, i) => <li key={i}>{eff}</li>)}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
 
-  const aggregate = (arr) => {
-    const nums = arr.filter(v => typeof v === 'number');
-    if (nums.length === 0) return agg === 'count' ? arr.length : agg === 'countd' ? new Set(arr).size : '';
-    switch (agg) {
-      case 'sum': return nums.reduce((a, b) => a + b, 0);
-      case 'count': return arr.length;
-      case 'avg': return nums.reduce((a, b) => a + b, 0) / nums.length;
-      case 'min': return Math.min(...nums);
-      case 'max': return Math.max(...nums);
-      case 'countd': return new Set(arr).size;
-      default: return nums.reduce((a, b) => a + b, 0);
-    }
-  };
+        function FoodSection({ t }) {
+            const [selectedItem, setSelectedItem] = useState(null);
 
-  // Build result grid
-  const grid = {};
-  rowKeys.forEach(rk => {
-    grid[rk] = {};
-    colKeys.forEach(ck => {
-      const arr = cellMap[`${rk}||${ck}`] || [];
-      grid[rk][ck] = arr.length > 0 ? aggregate(arr) : null;
-    });
-  });
+            const getImageForItem = (item) => {
+                const imgMap = {
+                    // ຊີ້ນໝູ & ຊີ້ນງົວ (ຮູບ Local ຕາມທີ່ແນບມາ)
+                    'ຊີ້ນໝູ': 'ຊີ້ນໝູ.jpg',
+                    'เนื้อหมู': 'ຊີ້ນໝູ.jpg',
+                    'Pork': 'ຊີ້ນໝູ.jpg',
+                    'ຊີ້ນງົວ': 'ຊີ້ນງົວ.jpg',
+                    'เนื้อวัว': 'ຊີ້ນງົວ.jpg',
+                    'Beef': 'ຊີ້ນງົວ.jpg',
+                    // ຮູບອື່ນໆ (ດຶງຈາກອິນເຕີເນັດ)
+                    'ຊີ້ນໄກ່': 'https://images.unsplash.com/photo-1604503468506-a8da13d82791?auto=format&fit=crop&q=80&w=800',
+                    'เนื้อไก่': 'https://images.unsplash.com/photo-1604503468506-a8da13d82791?auto=format&fit=crop&q=80&w=800',
+                    'Chicken': 'https://images.unsplash.com/photo-1604503468506-a8da13d82791?auto=format&fit=crop&q=80&w=800',
+                    'ໄຂ່ (ຕົ້ມກິນມີປະໂຫຍດສູງ)': 'https://images.unsplash.com/photo-1569246294372-ed319c674f14?auto=format&fit=crop&q=80&w=800',
+                    'กลุ่มไข่ (ต้มกินจะมีประโยชน์สูง)': 'https://images.unsplash.com/photo-1569246294372-ed319c674f14?auto=format&fit=crop&q=80&w=800',
+                    'Eggs (Boiled is highly beneficial)': 'https://images.unsplash.com/photo-1569246294372-ed319c674f14?auto=format&fit=crop&q=80&w=800'
+                };
+                return imgMap[item] || 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&q=80&w=800'; // ຮູບທົ່ວໄປຖ້າບໍ່ມີໃນລາຍການ
+            };
 
-  // Column totals
-  const colTotals = {};
-  colKeys.forEach(ck => {
-    const vals = rowKeys.map(rk => grid[rk][ck]).filter(v => v !== null && typeof v === 'number');
-    colTotals[ck] = vals.length > 0 ? aggregate(vals) : null;
-  });
+            const handleItemClick = (item) => {
+                setSelectedItem({
+                    name: item,
+                    src: getImageForItem(item)
+                });
+            };
 
-  pivotResult = { rowKeys, colKeys, grid, colTotals, valueField, agg };
-  renderPivotTable(pivotResult);
-  setView(currentView);
-}
+            return (
+                <div className="space-y-8 animate-fade-in relative">
+                    <div className="text-center mb-8">
+                        <h2 className="text-2xl md:text-3xl font-bold text-gray-800">{t('food_title')}</h2>
+                        <p className="text-base md:text-lg text-gray-500 mt-2">{t('food_sub')} <span className="text-rose-500 font-bold">(ຄລິກທີ່ຊື່ອາຫານເພື່ອເບິ່ງຮູບ)</span></p>
+                    </div>
+                    <div className="grid md:grid-cols-3 gap-6">
+                        <FoodCategory 
+                            title={t('meat_title')} 
+                            color="bg-red-50 border-red-200 text-red-800" 
+                            items={t('meat_list')} 
+                            imgSrc="https://images.unsplash.com/photo-1607623814075-e51df1bd682f?auto=format&fit=crop&q=80&w=800"
+                            onItemClick={handleItemClick}
+                        />
+                        <FoodCategory 
+                            title={t('veg_title')} 
+                            color="bg-green-50 border-green-200 text-green-800" 
+                            items={t('veg_list')} 
+                            imgSrc="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&q=80&w=800"
+                            onItemClick={handleItemClick}
+                        />
+                        <FoodCategory 
+                            title={t('absorb_title')} 
+                            color="bg-orange-50 border-orange-200 text-orange-800" 
+                            items={t('absorb_list')} 
+                            imgSrc="https://images.unsplash.com/photo-1610832958506-aa56368176cf?auto=format&fit=crop&q=80&w=800"
+                            onItemClick={handleItemClick}
+                        />
+                    </div>
 
-function fmt(v) {
-  if (v === null || v === undefined || v === '') return '—';
-  if (typeof v === 'number') {
-    if (Number.isInteger(v)) return v.toLocaleString();
-    return v.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 });
-  }
-  return v;
-}
+                    {/* ປັອບອັບສະແດງຮູບ (Modal) */}
+                    {selectedItem && (
+                        <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setSelectedItem(null)}>
+                            <div className="bg-white p-6 rounded-3xl max-w-md w-full relative shadow-2xl animate-fade-in" onClick={e => e.stopPropagation()}>
+                                <button className="absolute top-4 right-4 bg-gray-100 text-gray-600 rounded-full p-2 hover:bg-red-100 hover:text-red-600 transition-colors" onClick={() => setSelectedItem(null)}>
+                                    <Icon name="XCircle" size={24} />
+                                </button>
+                                <h3 className="font-bold text-xl text-center mb-4 text-gray-800 border-b pb-3 mr-8">{selectedItem.name}</h3>
+                                <img 
+                                    src={selectedItem.src} 
+                                    alt={selectedItem.name} 
+                                    className="w-full h-auto max-h-[60vh] object-cover rounded-2xl shadow-inner border border-gray-100" 
+                                    onError={(e) => { 
+                                        e.target.onerror = null; 
+                                        e.target.src = 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&q=80&w=800'; 
+                                    }} 
+                                />
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
 
-function renderPivotTable(result) {
-  const { rowKeys, colKeys, grid, colTotals, valueField, agg } = result;
-  const allVals = rowKeys.flatMap(rk => colKeys.map(ck => grid[rk][ck])).filter(v => v !== null && typeof v === 'number');
-  const maxVal = Math.max(...allVals, 1);
+        function FoodCategory({ title, items, color, imgSrc, onItemClick }) {
+            return (
+                <div className={`p-6 rounded-3xl border flex flex-col ${color} h-full overflow-hidden relative`}>
+                    <img src={imgSrc} alt={title} className="w-full h-32 md:h-40 object-cover rounded-2xl mb-4 shadow-sm" />
+                    <h3 className="font-bold text-lg mb-4 border-b border-current pb-2 opacity-90">{title}</h3>
+                    <div className="flex flex-wrap gap-2">
+                        {items.map((item, i) => (
+                            <span 
+                                key={i} 
+                                onClick={() => onItemClick && onItemClick(item)}
+                                className="bg-white/90 px-3 py-1.5 rounded-full text-sm shadow-sm font-bold border border-white/50 hover:bg-white hover:scale-105 hover:shadow-md transition-all cursor-pointer select-none">
+                                {item}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
 
-  let html = `
-    <div class="pivot-table-wrap">
-      <table class="pivot-table">
-        <thead><tr>
-          <th class="row-header">${pivotConfig.rows.join(' / ') || '—'}</th>
-          ${colKeys.map(ck => `<th class="col-header">${ck}</th>`).join('')}
-          <th class="col-header" style="color:var(--accent)">Grand Total</th>
-        </tr></thead>
-        <tbody>
-  `;
+        function MedsSection({ t }) {
+            return (
+                <div className="space-y-6 animate-fade-in max-w-5xl mx-auto">
+                    <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center gap-6">
+                        {/* ພາບຢາທາດເຫຼັກ */}
+                        <img src="https://images.unsplash.com/photo-1584308666744-24d5e4a81aa4?auto=format&fit=crop&q=80&w=800" alt="Iron Pills" className="w-full md:w-56 h-40 md:h-48 object-cover rounded-2xl shadow-sm" />
+                        <div className="text-center md:text-left flex-1">
+                            <h2 className="font-bold text-gray-800 text-2xl mb-2">{t('meds_title')}</h2>
+                            <p className="text-xl font-bold text-rose-600 mb-2">FERROUS FUMARATE 200 MG</p>
+                            <p className="text-lg text-gray-600">{t('meds_dose')}</p>
+                        </div>
+                    </div>
 
-  rowKeys.forEach(rk => {
-    const rowVals = colKeys.map(ck => grid[rk][ck]).filter(v => v !== null && typeof v === 'number');
-    const rowTotal = rowVals.length > 0 ? rowVals.reduce((a, b) => a + b, 0) : null;
-    html += `<tr><td class="row-label">${rk || '(blank)'}</td>`;
-    colKeys.forEach(ck => {
-      const v = grid[rk][ck];
-      const pct = (typeof v === 'number' && maxVal > 0) ? Math.round((v / maxVal) * 100) : 0;
-      html += `<td class="value-cell">
-        <div class="bar-cell">
-          <div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div>
-          ${fmt(v)}
-        </div>
-      </td>`;
-    });
-    html += `<td class="value-cell total-row">${fmt(rowTotal)}</td></tr>`;
-  });
+                    <div className="grid md:grid-cols-3 gap-6">
+                        <div className="bg-green-50 p-6 rounded-3xl border border-green-200">
+                            <h3 className="font-bold text-green-800 text-lg mb-3 flex items-center gap-2">
+                                <Icon name="CheckCircle2" size={24} className="flex-shrink-0" /> {t('meds_how')}
+                            </h3>
+                            <p className="text-base text-gray-700 leading-relaxed">{t('meds_how_desc')}</p>
+                        </div>
 
-  // Grand total row
-  const grandTotal = Object.values(colTotals).filter(v => typeof v === 'number').reduce((a, b) => a + b, 0);
-  html += `<tr>
-    <td class="row-label total-row" style="color:var(--accent)">Grand Total</td>
-    ${colKeys.map(ck => `<td class="value-cell grand-total">${fmt(colTotals[ck])}</td>`).join('')}
-    <td class="value-cell grand-total">${fmt(grandTotal)}</td>
-  </tr>`;
+                        <div className="bg-red-50 p-6 rounded-3xl border border-red-200 flex flex-col h-full">
+                            <h3 className="font-bold text-red-800 text-lg mb-3 flex items-center gap-2">
+                                <Icon name="XCircle" size={24} className="flex-shrink-0" /> {t('meds_avoid')}
+                            </h3>
+                            {/* ພາບກາແຟ/ນົມ ທີ່ຄວນຫຼີກລ້ຽງ */}
+                            <img src="https://images.unsplash.com/photo-1495474472201-444cb3f92d47?auto=format&fit=crop&q=80&w=800" alt="Avoid Coffee and Milk" className="w-full h-32 object-cover rounded-xl mb-4 shadow-sm" />
+                            <p className="text-base text-gray-700 mb-4 leading-relaxed">{t('meds_avoid_desc')}</p>
+                            <div className="bg-white/80 p-4 rounded-xl text-sm font-medium text-red-800 flex gap-3 items-start shadow-sm border border-red-100 mt-auto">
+                                <Icon name="Clock" size={20} className="flex-shrink-0" />
+                                <p>{t('meds_avoid_note')}</p>
+                            </div>
+                        </div>
 
-  html += `</tbody></table></div>`;
+                        <div className="bg-yellow-50 p-6 rounded-3xl border border-yellow-200">
+                            <h3 className="font-bold text-yellow-800 text-lg mb-4 flex items-center gap-2">
+                                <Icon name="AlertCircle" size={24} className="flex-shrink-0" /> {t('meds_side')}
+                            </h3>
+                            <ul className="text-base text-gray-700 space-y-3">
+                                {t('meds_side_list').map((side, i) => <li key={i} className="flex gap-3 items-center"><div className="w-2 h-2 bg-yellow-500 rounded-full"></div>{side}</li>)}
+                                <li className="bg-yellow-200/60 p-4 rounded-xl text-yellow-900 font-bold text-sm mt-4 border border-yellow-300 shadow-sm">
+                                    {t('meds_side_sol')}
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
 
-  // Chart
-  const chartBars = rowKeys.slice(0, 20).map(rk => {
-    const v = colKeys.reduce((sum, ck) => {
-      const val = grid[rk][ck];
-      return sum + (typeof val === 'number' ? val : 0);
-    }, 0);
-    return { label: rk, value: v };
-  });
-  const maxChart = Math.max(...chartBars.map(b => b.value), 1);
+        function TrackerSection({ t, logs, newLog, setNewLog, handleSaveLog }) {
+            return (
+                <div className="space-y-8 animate-fade-in max-w-6xl mx-auto">
+                    <div className="text-center mb-6">
+                        <h2 className="text-2xl md:text-3xl font-bold text-gray-800 text-rose-600">{t('track_title')}</h2>
+                        <p className="text-base md:text-lg text-gray-500 mt-2">{t('track_sub')}</p>
+                    </div>
 
-  html += `<div class="chart-area">
-    <div class="chart-title">📊 ${agg.toUpperCase()} of ${valueField} by ${pivotConfig.rows[0] || 'Row'}</div>
-    <div class="bar-chart">
-      ${chartBars.map(b => {
-        const h = Math.round((b.value / maxChart) * 110);
-        return `<div class="chart-bar-wrap">
-          <span class="chart-val">${b.value >= 1000 ? (b.value/1000).toFixed(1)+'k' : Math.round(b.value)}</span>
-          <div class="chart-bar" style="height:${h}px" title="${b.label}: ${fmt(b.value)}">
-            <span class="chart-bar-label">${b.label}</span>
-          </div>
-        </div>`;
-      }).join('')}
-    </div>
-  </div>`;
+                    <div className="grid lg:grid-cols-2 gap-8">
+                        {/* Form */}
+                        <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-200 h-fit">
+                            <h3 className="font-bold text-xl text-gray-800 mb-6 border-b pb-4">{t('track_new')}</h3>
+                            <div className="space-y-5">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-600 mb-2">{t('track_date')}</label>
+                                    <input type="date" value={newLog.date} onChange={(e) => setNewLog({...newLog, date: e.target.value})} className="w-full border border-gray-300 rounded-xl p-3.5 text-base focus:ring-4 focus:ring-rose-500/20 focus:border-rose-500 outline-none transition-all bg-gray-50 hover:bg-white" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-600 mb-2">{t('track_time')}</label>
+                                    <div className="flex gap-3">
+                                        {['time_m', 'time_a', 'time_e'].map((timeKey) => (
+                                            <button key={timeKey} onClick={() => setNewLog({...newLog, time: timeKey})} className={`flex-1 py-3.5 rounded-xl text-sm md:text-base font-bold transition-all border ${newLog.time === timeKey ? 'bg-rose-500 text-white border-rose-500 shadow-lg transform scale-[1.02]' : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100 hover:border-gray-300'}`}>
+                                                {t(timeKey)}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-600 mb-2">{t('track_note')}</label>
+                                    <input type="text" placeholder={t('track_note_ph')} value={newLog.conflict} onChange={(e) => setNewLog({...newLog, conflict: e.target.value})} className="w-full border border-gray-300 rounded-xl p-3.5 text-base focus:ring-4 focus:ring-rose-500/20 focus:border-rose-500 outline-none transition-all bg-gray-50 hover:bg-white" />
+                                </div>
+                                <button onClick={handleSaveLog} className="w-full bg-rose-500 hover:bg-rose-600 text-white font-bold py-4 rounded-xl mt-6 flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg active:scale-95 text-lg">
+                                    <Icon name="Save" size={24} /> {t('track_save')}
+                                </button>
+                            </div>
+                        </div>
 
-  document.getElementById('pivotArea').innerHTML = html;
-}
+                        {/* History */}
+                        <div className="bg-gray-50/50 p-6 md:p-8 rounded-3xl border border-gray-200 h-fit">
+                            <h3 className="font-bold text-xl text-gray-800 mb-6 pl-2">{t('track_hist')}</h3>
+                            {logs.length === 0 ? (
+                                <div className="bg-white border-2 border-dashed border-gray-300 rounded-2xl p-10 text-center">
+                                    <p className="text-base text-gray-400 font-medium">{t('track_empty')}</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
+                                    {logs.map((log) => (
+                                        <div key={log.id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-2 hover:border-rose-300 hover:shadow-md transition-all">
+                                            <div className="flex justify-between items-center">
+                                                <span className="font-bold text-gray-800 text-lg">{log.date}</span>
+                                                <span className="text-sm bg-rose-100 text-rose-800 px-4 py-1.5 rounded-full font-bold">{t(log.time)}</span>
+                                            </div>
+                                            <div className="text-sm md:text-base text-gray-600 flex items-start gap-2 mt-1">
+                                                <Icon name="Coffee" size={20} className="text-gray-400 flex-shrink-0" />
+                                                <span>{log.conflict || <span className="italic text-gray-400">{t('track_no_conflict')}</span>}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
 
-function showRawData() {
-  if (!rawData.length) return;
-  const preview = rawData.slice(0, 200);
-  const html = `
-    <div class="raw-table-wrap">
-      <table class="raw-table">
-        <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
-        <tbody>${preview.map(row => `<tr>${headers.map(h => `<td>${row[h] ?? ''}</td>`).join('')}</tr>`).join('')}</tbody>
-      </table>
-    </div>
-    ${rawData.length > 200 ? `<div style="text-align:center;font-size:11px;color:var(--text3);padding:8px">Showing 200 of ${rawData.length} rows</div>` : ''}
-  `;
-  document.getElementById('pivotArea').innerHTML = html;
-}
+        function ReportSection({ t, tabViews, likes, onClearData }) {
+            const totalViews = Object.values(tabViews).reduce((a, b) => a + b, 0);
 
-function setView(v) {
-  currentView = v;
-  document.querySelectorAll('.view-tab').forEach((t, i) => {
-    t.classList.toggle('active', ['pivot','chart','raw'][i] === v);
-  });
-  if (v === 'raw') { showRawData(); return; }
-  if (v === 'pivot' || v === 'chart') {
-    if (pivotResult) renderPivotTable(pivotResult);
-    else document.getElementById('pivotArea').innerHTML = '<div class="empty-state"><div class="empty-state-icon">📐</div>Configure fields and click Build Pivot</div>';
-  }
-}
+            return (
+                <div className="space-y-8 animate-fade-in max-w-5xl mx-auto">
+                    <div className="text-center mb-6">
+                        <h2 className="text-2xl md:text-3xl font-bold text-gray-800 text-rose-600">{t('rep_title')}</h2>
+                        <p className="text-base md:text-lg text-gray-500 mt-2">{t('rep_sub')}</p>
+                    </div>
 
-function clearPivot() {
-  pivotResult = null;
-  pivotConfig = { rows: [], cols: [], values: [], filters: [] };
-  renderZoneChips();
-  showRawData();
-}
+                    <div className="grid grid-cols-2 gap-6 md:gap-8">
+                        <div className="bg-gradient-to-br from-rose-400 to-rose-600 p-8 md:p-10 rounded-3xl shadow-lg text-white flex flex-col items-center justify-center transform transition-transform hover:-translate-y-2">
+                            <Icon name="ThumbsUp" size={48} className="mb-4 opacity-90" />
+                            <p className="text-5xl md:text-6xl font-black">{likes}</p>
+                            <p className="text-sm md:text-lg font-bold opacity-90 text-center mt-2">{t('rep_likes')}</p>
+                        </div>
+                        
+                        <div className="bg-gradient-to-br from-blue-400 to-blue-600 p-8 md:p-10 rounded-3xl shadow-lg text-white flex flex-col items-center justify-center transform transition-transform hover:-translate-y-2">
+                            <Icon name="Activity" size={48} className="mb-4 opacity-90" />
+                            <p className="text-5xl md:text-6xl font-black">{totalViews}</p>
+                            <p className="text-sm md:text-lg font-bold opacity-90 text-center mt-2">{t('rep_views')}</p>
+                        </div>
+                    </div>
 
-function applyFilter() {
-  filterText = document.getElementById('filterInput').value.toLowerCase();
-}
+                    <div className="bg-white p-8 md:p-10 rounded-3xl shadow-sm border border-gray-200">
+                        <h3 className="font-bold text-xl text-gray-800 mb-8 border-b pb-4">{t('rep_stat')}</h3>
+                        <div className="grid md:grid-cols-2 gap-x-12 gap-y-8">
+                            <StatRow icon={<Icon name="Info" size={24} className="text-blue-500" />} label={t('tab_info')} count={tabViews.info} total={totalViews} color="bg-blue-500" suffix={t('rep_times')} />
+                            <StatRow icon={<Icon name="Apple" size={24} className="text-green-500" />} label={t('tab_food')} count={tabViews.food} total={totalViews} color="bg-green-500" suffix={t('rep_times')} />
+                            <StatRow icon={<Icon name="Pill" size={24} className="text-rose-500" />} label={t('tab_meds')} count={tabViews.meds} total={totalViews} color="bg-rose-500" suffix={t('rep_times')} />
+                            <StatRow icon={<Icon name="CalendarCheck" size={24} className="text-orange-500" />} label={t('tab_tracker')} count={tabViews.tracker} total={totalViews} color="bg-orange-500" suffix={t('rep_times')} />
+                            <StatRow icon={<Icon name="BarChart3" size={24} className="text-purple-500" />} label={t('tab_report')} count={tabViews.report} total={totalViews} color="bg-purple-500" suffix={t('rep_times')} />
+                            <StatRow icon={<Icon name="MessageSquare" size={24} className="text-teal-500" />} label={t('tab_qna')} count={tabViews.qna} total={totalViews} color="bg-teal-500" suffix={t('rep_times')} />
+                        </div>
+                        
+                        {/* Clear Data Button */}
+                        <div className="mt-10 pt-6 border-t border-gray-100 flex justify-end">
+                            <button onClick={onClearData} className="bg-red-50 hover:bg-red-100 text-red-600 font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 transition-all">
+                                <Icon name="Trash2" size={20} /> {t('clear_data')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
 
-function exportCSV() {
-  if (!pivotResult) { notify('⚠ Build a pivot first'); return; }
-  const { rowKeys, colKeys, grid, colTotals } = pivotResult;
-  const rows = [['', ...colKeys, 'Grand Total']];
-  rowKeys.forEach(rk => {
-    const rowVals = colKeys.map(ck => grid[rk][ck] ?? '');
-    const total = rowVals.filter(v => typeof v === 'number').reduce((a, b) => a + b, 0);
-    rows.push([rk, ...rowVals, total]);
-  });
-  rows.push(['Grand Total', ...colKeys.map(ck => colTotals[ck] ?? ''), Object.values(colTotals).filter(v => typeof v === 'number').reduce((a, b) => a + b, 0)]);
-  const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = 'pivot_export.csv'; a.click();
-  notify('✓ Exported CSV');
-}
+        function StatRow({ icon, label, count, total, color, suffix }) {
+            const percentage = total === 0 ? 0 : Math.round((count / total) * 100);
+            return (
+                <div>
+                    <div className="flex justify-between items-center mb-3">
+                        <div className="flex items-center gap-3">
+                            {icon}
+                            <span className="text-base font-bold text-gray-700">{label}</span>
+                        </div>
+                        <span className="text-sm font-bold text-gray-800 bg-gray-100 px-3 py-1 rounded-lg">{count} {suffix}</span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                        <div className={`${color} h-3 rounded-full transition-all duration-1000 ease-out`} style={{ width: `${percentage}%` }}></div>
+                    </div>
+                </div>
+            );
+        }
 
-function notify(msg) {
-  const n = document.createElement('div');
-  n.className = 'notification';
-  n.textContent = msg;
-  document.body.appendChild(n);
-  setTimeout(() => n.remove(), 3000);
-}
-</script>
+        function QnaSection({ t }) {
+            const [feedback, setFeedback] = useState('');
+
+            const handleSubmitFeedback = () => {
+                if (feedback.trim() === '') return;
+                alert(t('fb_alert'));
+                setFeedback('');
+            };
+
+            return (
+                <div className="space-y-8 animate-fade-in max-w-6xl mx-auto">
+                    <div className="grid lg:grid-cols-2 gap-8">
+                        {/* FAQ Section */}
+                        <div className="space-y-6">
+                            <h2 className="text-xl md:text-2xl font-bold text-gray-800 flex items-center gap-3 mb-2">
+                                <Icon name="HelpCircle" size={28} className="text-teal-500" /> {t('faq_title')}
+                            </h2>
+                            
+                            <div className="space-y-4">
+                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:border-teal-200 transition-colors">
+                                    <h3 className="font-bold text-gray-800 text-base md:text-lg mb-2 flex items-start gap-3">
+                                        <span className="text-teal-500 font-black">Q:</span> {t('faq_1_q')}
+                                    </h3>
+                                    <p className="text-base text-gray-600 pl-8 leading-relaxed">
+                                        <span className="text-rose-500 font-bold">A:</span> {t('faq_1_a')}
+                                    </p>
+                                </div>
+                                
+                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:border-teal-200 transition-colors">
+                                    <h3 className="font-bold text-gray-800 text-base md:text-lg mb-2 flex items-start gap-3">
+                                        <span className="text-teal-500 font-black">Q:</span> {t('faq_2_q')}
+                                    </h3>
+                                    <p className="text-base text-gray-600 pl-8 leading-relaxed">
+                                        <span className="text-rose-500 font-bold">A:</span> {t('faq_2_a')}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Feedback Section */}
+                        <div className="bg-gradient-to-b from-teal-50 to-white p-6 md:p-8 rounded-3xl border border-teal-100 shadow-sm h-fit">
+                            <h2 className="font-bold text-xl md:text-2xl text-teal-800 mb-6 flex items-center gap-3">
+                                <Icon name="MessageSquare" size={28} /> {t('fb_title')}
+                            </h2>
+                            <textarea
+                                value={feedback}
+                                onChange={(e) => setFeedback(e.target.value)}
+                                placeholder={t('fb_ph')}
+                                className="w-full h-40 p-4 rounded-2xl border border-teal-200 text-base focus:ring-4 focus:ring-teal-500/20 focus:border-teal-500 outline-none resize-none mb-6 bg-white transition-all"
+                            />
+                            <button 
+                                onClick={handleSubmitFeedback}
+                                className="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold text-lg py-4 rounded-2xl flex items-center justify-center gap-3 transition-all shadow-md active:scale-95 hover:shadow-lg"
+                            >
+                                <Icon name="Send" size={24} /> {t('fb_submit')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
 </body>
 </html>
